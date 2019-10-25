@@ -1,0 +1,11 @@
+tel-it-security-automation :- ansible scripts etc. for automating
+the hardening process of installations
+
+(c) 2019 Markus Schumburg, Deutsche Telekom AG
+
+By default all files of the project ''tel-it-security-automation are 
+licensed under the MIT license. For details see the file 'LICENSE' 
+in the top directory.
+
+
+

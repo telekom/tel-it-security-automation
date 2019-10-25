@@ -1,0 +1,26 @@
+tel-it-security-automation : Project for
+security automation of Deutsche Telekom IT GmbH
+
+Copyright (c) 2019 Markus Schumburg, Deutsche Telekom AG
+
+Purpose:
+--------
+
+DT wants to publish ansible playbooks to harden its systems. 
+These playbooks are written as YAML files and executed by ansible.
+The purpose is to cooperate with the community also in case
+of security tasks
+
+License:
+--------
+
+All files are licensed under the Apache-2.0 license. (see License files)
+
+Contributors:
+-------------
+
+Markus Schumburg (markus.schumburg@telekom.de)
+
+
+
+
