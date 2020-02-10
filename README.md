@@ -23,6 +23,8 @@ This project provides an automated solution to implement security hardening for 
 
 The scripts are developed in a way, that they can be used to automatically harden operating systems and applications. Additionally the roles can be used to perform compliance checks in Ansible check mode ("dry run").
 
+> **NOTE** The [wiki](https://github.com/telekom/tel-it-security-automation/wiki) gives detailed information how the configure and audit the different security requirements on Linux systems.
+
 ## Roles
 
 Two roles are currently available:
