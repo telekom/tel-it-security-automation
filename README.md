@@ -114,6 +114,8 @@ roles_path    = ~/roles
 
 ## Variables
 
+### Variables for Linux role
+
 The default variables are located normally in the file `/default/main.yml`. We don't use this file! To give more flexibility we us our own
 default file named `/vars/var_linux_default_settings.yml`. 
 
@@ -143,6 +145,7 @@ Additional variables are located in the following files in directory `/vars`:
 ```
 vars\__
        |_main.yml
+       |_var_linux_default_settings.yml
        |_vars_linux(01)basic-hardening.yml
        |_vars_linux(02)logging.yml
        |_vars_linux(03)pluggable-authentication-modules.yml
@@ -160,12 +163,50 @@ vars\__
 
 > **NOTE:** Changing variables in these files can affect security compliance and must be approved by your responsible Project Security Manager from Telekom Security!
 
+### Variables for SSH role
+
+The default variables are located in the file `/default/main.yml`. Before
+execution of the playbook please change this variables following the demands of the systems you like to harden.
+
+| Name                | Req. | Values [*default*] | Description  |
+|---------------------|:----:|--------------------|--------------|
+| `ssh_server_ports`  | - | [*22*] | TCP Port(s) to use with SSH daemon. 
+| `config_ipv6_enable`| - | true, [*false*] | Enable/disable the use of IPv6 with SSH. |
+| `config_mgmt_interface_ipv4`| 25* | true, [*false*] | Enable/disable if a dedicated IPv4 management interface is used. |
+| `mgmt_interface_ipv4`| 25* | - | IPv4 addresses for management interface. |
+| `config_mgmt_interface_ipv6`| 25* | true, [*false*] | Enable/disable if a dedicated IPv6 management interface is used. |
+| `mgmt_interface_ipv6`| 25* | - | IPv6 addresses for management interface. |
+| `config_new_user` | 22* | true, [*false*] | Enable/disable if a user with root privileges and public key authentication should be generated for SSH. |
+| `user_name` | 22* | - | Name of user to be configured for SSH login . |
+| `public_key_file` | 22* | [*{{ role_path }}/files/id_rsa.pub*] | Location of public key that should be used for SSH user. |
+| `group_sudo` | 22* | [*sudo*] | Group(s) to which the SSH user should be added. |
+
+(*)The named requirements are coming from the Telekom Security document `3.65: Security Requirements for Linux for Servers`. There are also valid to be used with SSH!
+
+Additional variables are located in the following files in directory `/vars`:
+
+```
+vars\__
+       |_main.yml
+       |_vars_ssh(01)ssh-requirements.yml
+       |_vars_os_amazon_2.yml
+       |_vars_os_redhat_7.yml
+       |_vars_os_redhat_8.yml
+       |_vars_os_suse_12.yml
+       |_vars_os_suse_15.yml
+       |_vars_os_ubuntu-16.yml
+       |_vars_os_ubuntu-18.yml
+```
+
+> **NOTE** 
+Changing variables in these files can affect security compliance and must be approved by your responsible Project Security Manager from Telekom Security!
+
 -------------------------------------------------------------------------------
 
 ## Execution of Playbook
 
 >**IMPORTANT** 
-Before execution of the playbook it is important to configure the variables in the file `var_linux_default_settings.yml` or `var_linux_default_settings.yml` in directory `/var` with the specific values for your environment!
+For Ansible role for Linux: before execution of the playbook it is important to configure the variables in the file `var_linux_default_settings.yml` or `var_linux_default_settings.yml` in directory `/var` with the specific values for your environment!
 
 Example of playbook:
 ```yml
@@ -175,6 +216,7 @@ Example of playbook:
   become: true    # Become root (sudo)
   roles:
     - hardening-linux-server
+    - hardening-ssh
   post_tasks:
     - reboot:
       when: not ansible_check_mode
@@ -194,6 +236,7 @@ You can also start the playbook with `ansible-playbook <playbook>.yml --check` t
 
 Telekom Security - Security Requirements:
 - SecReq 3.65: Linux OS for Servers (version 1.3; 01.12.2019)
+- SecReq 3.04: SSH (version 2.6; 01.12.2019)
 
 The document can be found on [Telekom Security PSA Portal](https://psa-portal.telekom.de) (only internal).
 
