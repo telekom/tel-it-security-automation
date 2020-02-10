@@ -1,4 +1,12 @@
-# Security & Compliance Automation
+<!---
+tel-it-security-automation :- Ansible roles for automated security hardening.  
+Copyright (c) 2019 Markus Schumburg, [...] Deutsche Telekom AG 
+contact: devsecops@telekom.de 
+This file is distributed under the conditions of the Apache-2.0 license. 
+For details see the files LICENSING, LICENSE, and/or COPYING on the toplevel.
+--->
+
+# Telekom IT Security Automation - Hardening Linux Server
 <img align="right" src="images/logo-cop-&-car-200x200.png" alt="Telekom IT DevSecOps Team" height="100" width="100">
 
 Author: DevSecOps Team   
@@ -7,48 +15,19 @@ Company: [Deutsche Telekom IT GmbH](https://www.telekom.com)
 
 E-Mail: [devsecops@telekom.de](devsecops@telekom.de)
 
--------------------------------------------------------------------------------
+---
 
-## Introduction
+## Description
 
-Software is delivered by vendors with a minimal pre-configuration that is feasible for most customers. This is also true for security relevant configuration which leads to insecure systems in default configuration. To change this an important job in IT security is the secure configuration of operating systems and applications - also named hardening. This is a complex and error-prone task if done manually. Additionally, this task must be repeated and controlled in case of any changes on a system.    
-
-The DevSecOps team of Deutsche Telekom IT GmbH has the mission to deliver tools and solutions that help there customers to build secure application and services. The intention of DevSecOps teams project "Security & Compliance Automation" is the implementation of a solution for automated hardening and compliance checks that allow fast, reproducible and reliable implementation and documentation of security requirements for operating systems and applications.
-
-## Solution
-
-This project provides an automated solution to implement security hardening for operating systems and applications. This is needed to reach an adequate security level and to be compliant to the security requirements from Telekom Security. The solution helps to prepare systems that can easily pass the technical part of the Privacy & Assessment Process (PSA) of Telekom Security and Group Privacy.
-
-![Automated Hardening](images/hardening-pipeline.png "Automated Hardening")
-
-The scripts are developed in a way, that they can be used to automatically harden operating systems and applications. Additionally the roles can be used to perform compliance checks in Ansible check mode ("dry run").
-
-## Roles
-
-Two roles are currently available:
-
-- Ansible role for hardening of Linux based Servers
-- Ansible role for hardening of OpenSSH daemon on Linux
-
-The hardening will be done following the security requirements for 
-- Linux servers (3.65) 
-- SSH (3.04)
-
-from Telekom Security (see [References](#references) for used document versions).
+This Ansible role can be used to implement hardening of Linux OS on servers. The hardening will be done following the security requirements for Linux servers (3.65) from Telekom Security (see [References](#references) for used document version).
 
 ## Supported Platforms
 
-### Ansible control node requirements
+Ansible control node & managed node requirements:
 - Ansible version: 2.8 (or higher)
 - Python version: 2.7 or version: 3.5 (or higher)
 
-### Managed node requirements
-
-On managed node the following Python version must be installed:
-
-- Python version: 2.7 or version: 3.5 (or higher)
-
-The roles are tested for hardening of the following Linux versions:
+The role is tested with the following Linux versions:
 
   - Ubuntu 16.04 LTS
   - Ubuntu 18.04 LTS
@@ -59,7 +38,7 @@ The roles are tested for hardening of the following Linux versions:
   - Suse Linux Enterprise Server 12
   - Suse Linux Enterprise Server 15
 
-> **IMPORTANT:** These roles only supports Linux versions for SERVERS! The role is not tested with desktop systems and can cause unexpected malfunctions.
+> **IMPORTANT:** This role only supports Linux versions for SERVERS! The role is not tested with desktop systems and can cause unexpected malfunctions.
 
 ## Ansible Installation
 
@@ -204,6 +183,3 @@ A public available complete set of all security requirements of Deutsche Telekom
 Apache License, Version 2.0
 
 See file [LICENSE](./LICENSE)
-
-
-

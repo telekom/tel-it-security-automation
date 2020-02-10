@@ -1,0 +1,104 @@
+---
+# tel-it-security-automation :- Ansible roles for automated security hardening.  
+# Copyright (c) 2019 Markus Schumburg, [...] Deutsche Telekom AG 
+# contact: devsecops@telekom.de 
+# This file is distributed under the conditions of the Apache-2.0 license. 
+# For details see the files LICENSING, LICENSE, and/or COPYING on the toplevel.
+
+# ========================================================================
+# Deutsch Telekom IT - DevSecOps Team
+# ------------------------------------------------------------------------
+# Security Hardening & Compliance Checks
+# Linux OS for Servers (3.65)
+#
+# Tasks: 05 Mandatory Access Control
+# ========================================================================
+
+# Req-50: If a system has Internet facing services or is a virtualization 
+#         host, a MAC solution must be used.
+
+# - NOTE ------------------------------------------------------------------
+# Needed task for implementation is located in '/tasks/main.yml' because of
+# conflixt with installation process!
+# -------------------------------------------------------------------------
+
+# Req-51: If SELinux is used, it must not be disabled in bootloader 
+#         configuration.
+- name: req-051.1 enable selinux in grub config 
+  replace:
+    path: "{{ os_grub_config_file }}"
+    regexp: "selinux=0"
+    replace: "selinux=1"
+  notify: update grub
+  when: 
+    - config_req_51
+    - os_mac_solution == "selinux"
+
+- name: req-051.1 Enable enforcing for SELinux in grub config 
+  replace:
+    path: "{{ os_grub_config_file }}"
+    regexp: "enforcing=0"
+    replace: "enforcing=1"
+  notify: update grub
+  when: 
+    - config_req_51
+    - os_mac_solution == "selinux"
+
+# Req-52: If SELinux is used, its state must be enforced.
+# Req-53: If SELinux is used, the policy must be configured.
+
+- name: req-052-053.1 configure selinux state and policy
+  selinux:
+    policy: "{{ selinux_policy }}"  # Req-52
+    state: "{{ selinux_state }}"    # Req-53
+  when: 
+    - config_req_52
+    - config_req_53
+    - os_mac_solution == "selinux"
+
+# Req-54: If SELinux is used, SETroubleshoot and MCS Translation Service 
+#         must not be installed.
+
+- name: req-054.1 uninstall SETroubleshoot and MCS Translation Service
+  package:
+    name: '{{ item }}'
+    state: absent
+  with_items: '{{ selinux_tools }}'
+  when: 
+    - config_req_54
+    - os_mac_solution == "selinux"
+
+# Req-55: If AppArmor is used, it must not be disabled in bootloader 
+#         configuration.
+
+- name: req-055.1 enable apparmor in grub config 
+  replace:
+    path: "{{ os_grub_config_file }}"
+    regexp: "apparmor=0"
+    replace: "apparmor=1"
+  notify: update grub
+  when: 
+    - config_req_55
+    - os_mac_solution == "apparmor"
+
+# Req-56: AppArmor is used, its state must be enforced.
+
+- name: req-056.1 start apparmor
+  systemd:
+    name: apparmor
+    state: started 
+    enabled: yes
+  when: 
+    - config_req_56
+    - os_mac_solution == "apparmor"
+
+- name: req-056.2 enforce apparmor state
+  shell: "aa-enforce /etc/apparmor.d/{item}*"
+  with_items: "{{ enforce_apparmor_files.stdout_lines | default([]) }}"
+  changed_when: false
+  when: 
+    - config_req_56
+    - os_mac_solution == "apparmor"
+
+
+

@@ -1,0 +1,76 @@
+---
+# tel-it-security-automation :- Ansible roles for automated security hardening.  
+# Copyright (c) 2019 Markus Schumburg, [...] Deutsche Telekom AG 
+# contact: devsecops@telekom.de 
+# This file is distributed under the conditions of the Apache-2.0 license. 
+# For details see the files LICENSING, LICENSE, and/or COPYING on the toplevel.
+
+# ========================================================================
+# Deutsch Telekom IT - DevSecOps Team
+# ------------------------------------------------------------------------
+# Security Hardening & Compliance Checks
+# Linux OS for Servers (3.65)
+#
+# Handlers
+# ========================================================================
+
+- name: update grub
+  command: "{{ os_grub_config_update }}"
+  changed_when: false
+  when: not ansible_check_mode
+
+- name: restart chrony (not SLES 12)
+  service:
+    name: "{{ os_timesync_daemon }}"
+    state: restarted
+    enabled: yes
+  listen: restart chrony
+  when: 
+    - not ansible_check_mode
+    - ansible_os_family != "Suse" 
+    - ansible_distribution_major_version != "12"
+
+- name: restart chrony (SLES 12)
+  systemd:
+    name: "{{ os_timesync_daemon }}"
+    enabled: yes
+  listen: restart chrony
+  when: 
+    - not ansible_check_mode
+    - ansible_os_family == "Suse"
+    - ansible_distribution_major_version == "12"
+
+- name: restart auditd (not SLES 12)
+  command: 
+    cmd: service "{{ os_audit_deamon }}" restart
+    warn: no
+  listen: restart auditd
+  when: 
+    - not ansible_check_mode
+    - ansible_os_family != "Suse" 
+    - ansible_distribution_major_version != "12"
+    
+- name: restart auditd (SLES 12)
+  systemd:
+    name: "{{ os_audit_deamon }}"
+    enabled: yes
+  listen: restart auditd
+  when: 
+    - not ansible_check_mode
+    - ansible_os_family == "Suse"
+    - ansible_distribution_major_version == "12"
+  
+- name: restart rsyslog
+  service:
+    name: "rsyslog"
+    state: restarted
+    enabled: yes
+  when: not ansible_check_mode
+
+- name: restart sshd
+  service:
+    name: "sshd"
+    state: restarted
+    enabled: yes
+  when: not ansible_check_mode
+

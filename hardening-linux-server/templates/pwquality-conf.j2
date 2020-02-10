@@ -1,0 +1,22 @@
+# tel-it-security-automation :- Ansible roles for automated security hardening.  
+# Copyright (c) 2019 Markus Schumburg, [...] Deutsche Telekom AG 
+# contact: devsecops@telekom.de 
+# This file is distributed under the conditions of the Apache-2.0 license. 
+# For details see the files LICENSING, LICENSE, and/or COPYING on the toplevel.
+
+# ========================================================================
+# Deutsch Telekom IT - DevSecOps Team
+# Security Hardening & Compliance Checks
+# ------------------------------------------------------------------------
+# File generated during automated hardening with Ansible
+# ========================================================================
+
+minlen = {{os_pam_password_length}}
+minclass = {{pam_character_classes}}
+maxrepeat = {{pam_password_maxrepeat}}
+maxclassrepeat = 0
+lcredit = 0
+ucredit = 0
+dcredit = 0
+ocredit = 0
+

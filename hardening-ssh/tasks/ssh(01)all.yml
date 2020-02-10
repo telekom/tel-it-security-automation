@@ -1,0 +1,50 @@
+---
+# tel-it-security-automation :- Ansible roles for automated security hardening.  
+# Copyright (c) 2019 Markus Schumburg, [...] Deutsche Telekom AG 
+# contact: devsecops@telekom.de 
+# This file is distributed under the conditions of the Apache-2.0 license. 
+# For details see the files LICENSING, LICENSE, and/or COPYING on the toplevel.
+
+# ========================================================================
+# Deutsch Telekom IT - DevSecOps Team
+# ------------------------------------------------------------------------
+# Security Hardening & Compliance Checks
+# Secure Shell (3.04)
+#
+# Tasks: SSH All
+# ========================================================================
+
+# Req-2: SSH moduli smaller than 2048 must not be used.
+
+- name: req-002.1 check if /etc/ssh/moduli for short values
+  shell: awk '$5 < {{ moduli_minimum }}' /etc/ssh/moduli
+  register: ssh_moduli
+  changed_when: false
+  when: config_moduli and not ansible_check_mode
+
+- name: req-002.1 remove all primes smaller than defined value
+  shell: awk '$5 >= {{ moduli_minimum }}' /etc/ssh/moduli > /etc/ssh/moduli.new ;
+         [ -r /etc/ssh/moduli.new -a -s /etc/ssh/moduli.new ] && mv /etc/ssh/moduli.new /etc/ssh/moduli || true
+  notify: restart sshd
+  when: config_moduli and
+       ( not ansible_check_mode and ssh_moduli.stdout != "" )
+
+# Req-1 - 24: Configure 'etc/ssh/sshd_config' file
+
+- name: req-1-24.1 set configuration for sshd (req 1, 3 - 24)
+  template:
+    src: 'sshdconfig.j2'
+    dest: '{{ os_sshd_conf_file }}'
+    owner: "{{ os_sshd_conf_owner }}"
+    group: "{{ os_sshd_conf_group }}"
+    mode: "{{ os_sshd_conf_mode }}"
+  notify: restart sshd
+ # when: not ansible_check_mode
+
+# Req-24: If SFTP is activated, internal server of OpenSSH must be used.
+
+- name: req-024.1 generate sftp group
+  group:
+    name: "{{ sftp_group }}"
+    state: present
+  when: set_sftp_chroot

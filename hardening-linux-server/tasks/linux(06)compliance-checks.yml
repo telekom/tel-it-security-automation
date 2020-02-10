@@ -1,0 +1,346 @@
+---
+# tel-it-security-automation :- Ansible roles for automated security hardening.  
+# Copyright (c) 2019 Markus Schumburg, [...] Deutsche Telekom AG 
+# contact: devsecops@telekom.de 
+# This file is distributed under the conditions of the Apache-2.0 license. 
+# For details see the files LICENSING, LICENSE, and/or COPYING on the toplevel.
+
+# ========================================================================
+# Deutsch Telekom IT - DevSecOps Team
+# ------------------------------------------------------------------------
+# Security Hardening & Compliance Checks
+# Linux OS for Servers (3.65)
+#
+# Tasks: 05 Regular Compliance Checks
+# ========================================================================
+
+# Req-57: No legacy + entries must exist in files passwd, shadows and 
+#         group.
+
+- block:
+    - name: req-057.1 check passwd file for legacy entry
+      shell: awk -F":" '($1 == "+") {print $1}' /etc/passwd
+      register: search_leg_passwd
+      failed_when: search_leg_passwd.stdout == "+"
+      changed_when: false
+      check_mode: no
+  always:
+    - debug:
+        msg: "WARNING: If task failes legacy entries exist in passwd file!"
+  when: config_req_57
+
+- block:
+    - name: req-057.2 check shadow file for legacy entry
+      shell: awk -F":" '($1 == "+") {print $1}' /etc/shadow
+      register: search_leg_shadow
+      failed_when: search_leg_shadow.stdout == "+"
+      changed_when: false
+      check_mode: no
+  always:
+    - debug:
+        msg: "WARNING: If task failes legacy entries exist in shadow file!"
+  when: config_req_57
+
+- block:
+    - name: req-057.3 check group file for legacy entry
+      shell: awk -F":" '($1 == "+") {print $1}' /etc/group
+      register: search_leg_group
+      failed_when: search_leg_group.stdout == "+"
+      changed_when: false
+      check_mode: no
+  always:
+    - debug:
+        msg: "WARNING: If task failes legacy entries exist in group file!"
+  when: config_req_57
+
+# Req-58: A user's home directory must be owned by the user and have mode 
+#         750 or more restrictive.
+
+- name: check users for home directories
+  command: ls /home/
+  register: user_dirs
+  changed_when: false
+  check_mode: no
+  when: config_req_58
+
+- name: req-058.1 change user and permissions of home directories
+  file:
+    path: "/home/{{ item }}"
+    state: directory
+    owner: "{{ item }}"
+    group: "{{ item }}"
+    mode: o-rwx
+  with_items: "{{ user_dirs.stdout_lines | default([]) }}"
+  when: config_req_58
+
+# Req-59: Default group for the root account must be GID 0.
+
+- block:
+    - name: req-059.1 check if gid is 0 for root
+      shell: awk -F':' '{if ($1 == "root") print $4}' /etc/passwd
+      register: check_root_gid
+      failed_when: check_root_gid.stdout != "0"
+      changed_when: false
+      check_mode: no
+  always:
+    - debug:
+        msg: "WARNING: If task fails GID of root is not 0!"
+  when: config_req_59
+
+# Req-60: Root must be the only UID 0 account.
+
+- block:
+    - name: req-060.1 check for users with uid 0 other than root
+      shell: awk -F':' '{ if ( $1 != "root" && $3 == 0 ) print $1 }' /etc/passwd
+      register: search_uid_zero
+      failed_when: search_uid_zero.stdout != ""
+      changed_when: false
+      check_mode: no
+  always:
+    - debug:
+        msg: "WARNING: If task fails more than one user with uid 0 exists!"
+  when: config_req_60
+
+# Req-61: All groups in /etc/passwd must exist in /etc/group.
+
+- name: read users from /etc/passwd
+  shell: awk -F':' '{print $4}' /etc/passwd | sort -u
+  register: read_users
+  changed_when: false
+  check_mode: no
+  when: config_req_61
+
+- block:
+    - name: req-061.1 check if group exist for users
+      shell: awk -v var="{{ item }}" -F':' '{if ($3 == var) print $3}' /etc/group
+      register: check_groups
+      failed_when: check_groups.stdout == ""
+      changed_when: false
+      check_mode: no
+      with_items: "{{ read_users.stdout_lines }}"
+  always:
+    - debug:
+        msg: "WARNING: If task fails not all groups exists in /etc/group file!"
+  when: config_req_61
+
+# Req-62: No duplicate UIDs and GIDs must exist.
+
+- name: read uids from /etc/passwd
+  shell: awk -F':' '{print $3}' /etc/passwd
+  register: read_uid
+  changed_when: false
+  check_mode: no
+  when: config_req_62
+
+- block:
+    - name: req-062.1 check if duplicated uid exist
+      shell: awk -v var="{{ item }}" -F':' '{ if ($3 == var) print $3}' /etc/passwd | wc -l
+      register: check_uids
+      failed_when: check_uids.stdout >= "2"
+      changed_when: false
+      check_mode: no
+      with_items: "{{ read_uid.stdout_lines }}"
+  always:
+    - debug:
+        msg: "WARNING: If task fails duplicated uid exists in /etc/passwd file!"
+  when: config_req_62
+
+- name: read gids from /etc/group
+  command: awk -F':' '{print $3}' /etc/group
+  register: read_gid
+  changed_when: false
+  check_mode: no
+  when: config_req_62
+
+- block:
+    - name: req-062.2 check if duplicated gid exist
+      shell: awk -v var="{{ item }}" -F':' '{ if ($3 == var) print $3}' /etc/group | wc -l
+      register: check_gids
+      failed_when: check_gids.stdout >= "2"
+      changed_when: false
+      check_mode: no
+      with_items: "{{ read_gid.stdout_lines }}"
+  always:
+    - debug:
+        msg: "WARNING: If taks fails duplicated gid exists in /etc/group file!"
+  when: config_req_62
+
+# Req-63: No duplicate user and group names must exist.
+
+- name: read users from /etc/passwd
+  shell: awk -F':' '{print $1}' /etc/passwd
+  register: read_users2
+  changed_when: false
+  check_mode: no
+  when: config_req_63
+
+- block:
+    - name: req-063.1 check if duplicated users exist
+      shell: awk -v var="{{ item }}" -F':' '{ if ($1 == var) print $1}' /etc/passwd | wc -l
+      register: check_users2
+      failed_when: check_users2.stdout >= "2"
+      changed_when: false
+      check_mode: no
+      with_items: "{{ read_users2.stdout_lines }}"
+  always:
+    - debug:
+        msg: "WARNING: If task fails duplicated users exists in /etc/passwd file!"
+  when: config_req_63
+
+- name: read groups from /etc/group
+  shell: awk -F':' '{print $1}' /etc/group
+  register: read_groups2
+  changed_when: false
+  check_mode: no
+  when: config_req_63
+
+- block:
+    - name: req-063.2 check if duplicated groups exist
+      shell: awk -v var="{{ item }}" -F':' '{ if ($1 == var) print $1}' /etc/group | wc -l
+      register: check_groups2
+      failed_when: check_groups2.stdout >= "2"
+      changed_when: false
+      check_mode: no
+      with_items: "{{ read_groups2.stdout_lines }}"
+  always:
+    - debug:
+        msg: "WARNING: If task fails duplicated groups exists in /etc/group file!"
+  when: config_req_63
+
+# Req-64: The shadow group must be empty (only Ubuntu Linux).
+
+- block:
+    - name: req-064.1 check if shadow is epmty
+      shell: awk -F':' '{if ($1 == "shadow") print $4}' /etc/group
+      register: check_shadow
+      failed_when: check_shadow.stdout != ""
+      changed_when: false
+      check_mode: no
+  always:
+    - debug:
+        msg: "WARNING: If task fails the group shadow is not empty!"
+  when: config_req_64
+
+- name: read gid from shadow group
+  shell: awk -F':' '{if ($1 == "shadow") print $3}' /etc/group
+  register: read_gid_shadow
+  changed_when: false
+  check_mode: no
+  when: config_req_64
+
+- block:
+    - name: req-064.2 check if user is member of shadow
+      shell: awk -F':' '{ if ($4 == "{{ read_gid_shadow.stdout }}") print $4}' /etc/passwd | wc -l
+      register: check_gid_shadow
+      failed_when: check_gid_shadow.stdout != "0"
+      changed_when: false
+      check_mode: no
+  always:
+    - debug:
+        msg: "WARNING: If task fails user is memenber of group shadow!"
+  when: config_req_64
+
+# Req-65: No files and directories without assigned user or group must
+#         exist.
+
+- name: req-065.1 search for unowned files
+  shell: df --local -P | awk {'if (NR!=1) print $6'} | xargs -I '{}' find '{}' -xdev -nouser
+  register: find_unowned
+  changed_when: false
+  check_mode: no
+  when: config_req_65
+
+- name: req-065.2 set user for unowned files to root
+  file:
+    path: "{{ item }}"
+    owner: "root"
+    group: "root"
+  with_items: "{{ find_unowned.stdout_lines | default([]) }}"
+  when: 
+    - config_req_65
+    - find_unowned.stdout != ""
+
+- name: req-065.3 search for files without group
+  shell: df --local -P | awk {'if (NR!=1) print $6'} | xargs -I '{}' find '{}' -xdev -nogroup
+  register: find_no_group
+  changed_when: false
+  check_mode: no
+  when: config_req_65
+
+- name: req-065.4 set group for files without group to root
+  file:
+    path: "{{ item }}"
+    group: "root"
+  with_items: "{{ find_no_group.stdout_lines | default([]) }}"
+  when: 
+    - config_req_65
+    - find_no_group.stdout != ""
+
+# Req-66: Permissions of security relevant configuration files must have 
+#         the distribution default values or more restrictive.
+
+- name: req-066.1 check permissions of all passwd, group & shadow files
+  file:
+    path: "{{ item.path }}"
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
+    mode: "{{ item.mode }}"
+  with_items:
+    - { path: "{{ os_passwd_file }}", owner: "{{ os_passwd_owner }}", group: "{{ os_passwd_group }}", mode: "{{ os_passwd_mode }}" }
+    - { path: "{{ os_passwdm_file }}", owner: "{{ os_passwdm_owner }}", group: "{{ os_passwdm_group }}", mode: "{{ os_passwdm_mode }}" }
+    - { path: "{{ os_shadow_file }}", owner: "{{ os_shadow_owner }}", group: "{{ os_shadow_group }}", mode: "{{ os_shadow_mode }}" }
+    - { path: "{{ os_shadowm_file }}", owner: "{{ os_shadowm_owner }}", group: "{{ os_shadowm_group }}", mode: "{{ os_shadowm_mode }}" }
+    - { path: "{{ os_group_file }}", owner: "{{ os_group_owner }}", group: "{{ os_group_group }}", mode: "{{ os_group_mode }}" }
+    - { path: "{{ os_groupm_file }}", owner: "{{ os_groupm_owner }}", group: "{{ os_groupm_group }}", mode: "{{ os_groupm_mode }}" }
+  when: config_req_66
+
+- name: req-066.2 check permissions of all gshadow files
+  file:
+    path: "{{ item.path }}"
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
+    mode: "{{ item.mode }}"
+  with_items:
+    - { path: "{{ os_gshadow_file }}", owner: "{{ os_gshadow_owner }}", group: "{{ os_gshadow_group }}", mode: "{{ os_gshadow_mode }}" }
+    - { path: "{{ os_gshadowm_file }}", owner: "{{ os_gshadowm_owner }}", group: "{{ os_gshadowm_group }}", mode: "{{ os_gshadowm_mode }}" }
+  when: 
+    - config_req_66
+    - os_check_gshadow
+
+- name: req-066.3 check permissions of bootloader config
+  file:
+    path: '{{ os_grub_file }}'
+    owner: "{{ os_grub_owner }}"
+    group: "{{ os_grub_group }}"
+    mode: "{{ os_grub_mode }}"
+  when: config_req_66
+
+- name: check for logfiles
+  shell: find /var/log -type f | grep -v "(history.log)"
+  register: check_logfiles
+  changed_when: false
+  check_mode: no
+  when: config_req_66
+
+- name: req-066.4 check permissions of logfiles
+  file:
+    path: '{{ item }}'
+    mode: '{{ os_logfile_mode }}'
+  with_items: "{{ check_logfiles.stdout_lines }}"
+  when: config_req_66
+
+- name: req-066.5 check permissions for sysctl.conf
+  file:
+    path: '{{ os_sysctl_file }}'
+    owner: "{{ os_sysctl_owner }}"
+    group: "{{ os_sysctl_group }}"
+    mode: "{{ os_sysctl_mode }}"
+  when: config_req_66
+
+- name: req-066.6 check permissions of sshd_config config
+  file:
+    path: "{{ os_sshd_conf_file }}"
+    owner: "{{ os_sshd_conf_owner }}"
+    group: "{{ os_sshd_conf_group }}"
+    mode: "{{ os_sshd_conf_mode }}"
+  when: config_req_66

@@ -1,0 +1,146 @@
+---
+# tel-it-security-automation :- Ansible roles for automated security hardening.  
+# Copyright (c) 2019 Markus Schumburg, [...] Deutsche Telekom AG 
+# contact: devsecops@telekom.de 
+# This file is distributed under the conditions of the Apache-2.0 license. 
+# For details see the files LICENSING, LICENSE, and/or COPYING on the toplevel.
+
+# ========================================================================
+# Deutsch Telekom IT - DevSecOps Team
+# ------------------------------------------------------------------------
+# Security Hardening & Compliance Checks
+# Linux OS for Servers (3.65)
+#
+# Main Tasks
+# ========================================================================
+
+# Stop playbook if Linux distro and version is not supported.
+- fail:
+    msg: "Your {{ansible_distribution}} version {{ ansible_distribution_version }} is not supported!"
+  when: (ansible_distribution == "RedHat" and ansible_distribution_major_version != "7") and
+        (ansible_distribution == "RedHat" and ansible_distribution_major_version != "8") and
+        (ansible_distribution == "CentOS" and ansible_distribution_major_version != "7") and
+        (ansible_distribution == "Amazon" and aansible_distribution_major_version != "2") and
+        (ansible_distribution == "Suse" and ansible_distribution_major_version != "12") and
+        (ansible_distribution == "Suse" and ansible_distribution_major_version != "15") and
+        (ansible_distribution == "Ubuntu" and ansible_distribution_version != "16.04") and
+        (ansible_distribution == "Ubuntu" and ansible_distribution_version != "18.04")
+
+# Read variables for detected OS from '/vars/var_<linux-os>.yml' files
+- name: read variables for redhat 7
+  include_vars: "vars_os_redhat_7.yml"
+  when: ansible_distribution == "RedHat" and ansible_distribution_major_version == "7"
+
+- name: read variables for redhat 8
+  include_vars: "vars_os_redhat_8.yml"
+  when: ansible_distribution == "RedHat" and ansible_distribution_major_version == "8"
+
+- name: read variables for centos 7
+  include_vars: "vars_os_centos_7.yml"
+  when: ansible_distribution == "CentOS" and ansible_distribution_major_version == "7"
+
+- name: read variables for amazon linux
+  include_vars: "vars_os_amazon_2.yml"
+  when: ansible_distribution == "Amazon" and ansible_distribution_major_version == "2"
+
+- name: read variables for suse 12
+  include_vars: "vars_os_suse_12.yml"
+  when: ansible_os_family == "Suse" and ansible_distribution_major_version == "12"
+
+- name: read variables for suse 15
+  include_vars: "vars_os_suse_12.yml"
+  when: ansible_os_family == "Suse" and ansible_distribution_major_version == "15"
+
+- name: read variables for ubuntu 16.04
+  include_vars: "vars_os_ubuntu-16.yml"
+  when: ansible_distribution == "Ubuntu" and ansible_distribution_version == "16.04"
+
+- name: read variables for ubuntu 18.04
+  include_vars: "vars_os_ubuntu-18.yml"
+  when: ansible_distribution == "Ubuntu" and ansible_distribution_version == "18.04"
+
+# -------------------------------------------------------------------------
+# Include for default or user specific requirement settings.
+# To use your own requirement settings copy the file:
+#
+#     '/vars/var_linux_default_settings.yml' 
+# to
+#     '/vars/var_linux_user_settings.yml'
+#
+# and enable/diable requirements as needed for your environment. 
+# -------------------------------------------------------------------------
+
+- name: load default or user settings for requirements
+  include_vars: '{{ item }}'
+  with_first_found:
+    - files:
+      - 'var_linux_user_settings.yml'
+      - 'var_linux_default_settings.yml'
+      skip: true
+
+# - NOTE ------------------------------------------------------------------
+# System update (as requested with Req 17) must be done before security
+# configuration. That's why relevante tasks are placed here!
+# -------------------------------------------------------------------------
+
+- name: req-017.0 upgrade linux os (redhat)
+  yum:
+    name: '*'
+    state: latest
+  when: ansible_os_family == "RedHat" and
+       ( config_req_17 and ansible_check_mode == false )
+
+- name: req-017.0 upgrade linux os (suse)
+  zypper:
+    name: '*'
+    state: latest 
+  when: ansible_os_family == "Suse" and
+       ( config_req_17 and ansible_check_mode == false )
+
+- name: req-017.0 upgrade linux os (ubuntu)
+  apt:
+    upgrade: dist
+    update_cache: yes
+    cache_valid_time: 3600
+    force_apt_get: no
+  when: ansible_os_family == "Debian" and
+       ( config_req_17 and ansible_check_mode == false )
+
+- include_vars: vars_linux(01)basic-hardening.yml
+- include_vars: vars_linux(02)logging.yml
+- include_vars: vars_linux(03)pluggable-authentication-modules.yml
+- include_vars: vars_linux(04)iptables.yml
+- include_vars: vars_linux(05)mandatory-access-control.yml
+- include_vars: vars_linux(06)compliance-checks.yml
+
+# - NOTE ------------------------------------------------------------------
+# Installation of chrony must be placed here because of error when 
+# installation is done in linux(02)logging.yml due to /var filesystem 
+# has noexec option enabled.
+# -------------------------------------------------------------------------
+
+- name: req-030.0 install {{os_timesync_software}}
+  package:
+    name: "{{ os_timesync_software }}"
+    state: present
+  when: config_req_30
+
+# - NOTE ------------------------------------------------------------------
+# Installation of MAC solution must be placed here because of error when 
+# installation is done in linux(05)mandatory-access-control.yml of error 
+# when processing packages.
+# -------------------------------------------------------------------------
+
+- name: req-050.0 ensure either SELinux or AppArmor are installed
+  package:
+    name: "{{ item }}"
+    state: present
+  with_items: "{{ os_install_mac_tools }}"
+  when: config_req_50
+
+- import_tasks: linux(01)basic-hardening.yml
+- import_tasks: linux(02)logging.yml
+- import_tasks: linux(03)pluggable-authentication-modules.yml
+- import_tasks: linux(04)iptables.yml
+- import_tasks: linux(05)mandatory-access-control.yml
+- import_tasks: linux(06)compliance-checks.yml

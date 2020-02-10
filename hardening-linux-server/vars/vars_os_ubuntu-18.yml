@@ -1,0 +1,254 @@
+---
+# tel-it-security-automation :- Ansible roles for automated security hardening.  
+# Copyright (c) 2019 Markus Schumburg, [...] Deutsche Telekom AG 
+# contact: devsecops@telekom.de 
+# This file is distributed under the conditions of the Apache-2.0 license. 
+# For details see the files LICENSING, LICENSE, and/or COPYING on the toplevel.
+
+# ========================================================================
+# Deutsch Telekom IT - DevSecOps Team
+# ------------------------------------------------------------------------
+# Security Hardening & Compliance Checks
+# Linux OS for Servers (3.65)
+#
+# Vars for Ubuntu 18.04
+# ========================================================================
+
+# =IMPORTANT==============================================================
+#
+#  Note: Changing variables in this file can affect security compliance!
+#
+# ========================================================================
+
+# Req-1: Unused services and protocols must be deactivated.
+os_network_services:
+  - "rsync"
+  - "atd"
+  - "ufw"
+  - "unattended-upgrades"
+  - "iscsid.service"
+  - "lxcfs.service"
+  - "lxd-containers.service"
+  - "open-iscsi.service"
+
+# Req 2: The reachability of services must be restricted.
+os_iptables_tools: 
+  - "iptables-persistent"
+  
+# Req 3: Unused software must not be installed or must be uninstalled.
+os_servers:
+  - "avahi-dnsconfd"
+  - "avahi-ui-utils"
+  - "tftp-server"
+  - "tftpd-hpa"
+  - "inetutils-telnetd"
+  - "rsh-server"
+  - "yp-tools"
+  - "friendly-recovery"
+  - "iscsi.service"
+  - "ntp"
+  - "rpcbind"
+  
+os_clients:
+  - "rsh-client"
+  - "inetutils-telnet"
+  - "nftables"
+
+# Snapd is only available on Ubuntu 16.04/18.04
+os_uninstall_snap: true
+
+# Req-4: Dedicated partitions must be used for growing content that can 
+#        influence the availability of the system.
+os_filesystem_type: "ext4"
+os_restorecon_command: false
+
+# Req-13: Core dumps must be disabled.
+os_disable_apport: true
+
+# Req-19: User accounts must be used that allow unambiguous identification 
+#         of the user.
+# Req-20: System accounts must be non-login.
+os_uid_default: 999
+os_nologin_path: /usr/sbin/nologin
+
+# Req-24: Authentication must be used for single user mode.
+# Is only neeed for Ubuntu 16.04/18.04 (-> true).
+os_config_root_password: true
+
+# Req-28: Logging must be enabled in bootloader configuration.
+os_grub_config_file: "/boot/grub/grub.cfg"
+os_grub_config_update: "update-grub"
+
+# Req-29: Log rotation for logfiles must be configured.
+os_su_root_syslog: true
+
+# Req-30: System time must be synchronized against a reference time source.
+os_timesync_software: "chrony"
+os_timesync_daemon: "chronyd"
+os_timesync_config_file: "/etc/chrony/chrony.conf"
+os_timesync_chronyd_path: "/etc/default/chrony"
+os_timesync_chronyd_conf: "DAEMON_OPTS"
+os_timesync_chronyd_user: "_chrony"
+
+# Req-31: Auditd service must be used to log security relevant events.
+os_audit_software: "auditd"
+os_audit_deamon: "auditd"
+os_audit_rules_file: "/etc/audit/rules.d/audit.rules"
+
+# Req-32:	System events must be logged.
+os_specific_system_events:
+  # (Un)Installation of software
+  - "-w /usr/bin/dpkg -p x -k software_mgmt"
+  - "-w /usr/bin/apt-add-repository -p x -k software_mgmt"
+  - "-w /usr/bin/apt-get -p x -k software_mgmt"
+  - "-w /usr/bin/aptitude -p x -k software_mgmt"
+
+# Req-33:	Access and Authentication events must be logged.
+os_specific_access_events:
+  # Logon and Logoff
+  - "-w /var/log/faillog -p wa -k logins"
+  - "-w /var/log/tallylog -p wa -k logins"
+  # AppArmor events
+  - "-w /etc/apparmor/ -p wa -k MAC-policy"
+  - "-w /etc/apparmor.d/ -p wa -k MAC-policy"
+
+# Req-35:	Configuration Change events must be logged.
+os_specific_change_events:
+  # Modification of logs
+  - "-w /var/log/auth.log"
+  - "-w /var/log/system.log"
+  # Network configuration change
+  - "-w /etc/network/interfaces -p wa -k system-locale"
+
+  # Req-37: Security relevant logging data must be send to an external system 
+#         direct after their creation.
+os_rsyslog_template: "rsyslog_UBUNTU.j2"
+os_rsyslog_conf: "/etc/rsyslog.d/50-default.conf"
+
+# PAM parameters needed for Req-42 - 45
+os_pam_config_files:
+  -  "/etc/pam.d/common-password"
+
+# Req-42: If PAM is used, an appropriate hashing function must be configured 
+#         for password protection for PAM.
+os_pam_hashing_files: "{{ os_pam_config_files }}"
+os_pam_hashing_type: "password"
+os_pam_hashing_control: "[success=1 default=ignore]"
+os_pam_hashing_module: "pam_unix.so"
+os_pam_hashing_module_arg: 
+  - "{{ encryption_method }}"
+  - "rounds={{ sha_crypt_max_rounds }}"
+
+# Req-43: If PAM is used, password rules must be configured for PAM to force 
+#         the use of passwords with a minimum length of 8 characters and a 
+#         combination of three out of the following categories: upper cases, 
+#         lower case, numbers and special characters.
+os_pam_password_length: "{{ pam_password_length }}"
+os_install_pam_pwmodules: true
+os_pam_pwmodules:
+  - "libpam-pwquality"
+  - "cracklib-runtime"
+os_use_pam_pwquality_conf: false
+os_pam_complexity_files: "{{ os_pam_config_files }}"
+os_pam_complexity_type: "password"
+os_pam_complexity_control: "requisite"
+os_pam_complexity_module: "pam_pwquality.so"
+os_pam_complexity_module_arg: 
+  - "minlen={{ os_pam_password_length }}"
+  - "minclass={{ pam_character_classes }}"
+  - "maxrepeat=3"
+  - "reject_username"
+  - "enforce_for_root"
+
+# Req-44: If PAM is used, a protection against brute force and dictionary 
+#         attacks that hinder password guessing must be configured in PAM.
+os_pam_fail_login_files: /etc/pam.d/common-account
+os_pam_fail_login_type: "auth"
+os_pam_fail_login_control: "required"
+os_pam_fail_login_module: "pam_tally2.so"
+
+# For Req-46 - 49: IPTables
+os_iptables_persistant: "/etc/iptables/rules.v4"
+os_iptables_save_stop: ""
+os_iptables_save_reload: ""
+
+
+# Req-50: If a system has Internet facing services or is a virtualization 
+#         host, a MAC solution must be used.
+os_mac_solution: "apparmor"
+os_install_mac_tools: 
+  - "apparmor"
+  - "apparmor-utils"
+
+# Req-66: Permissions of security relevant configuration files must have 
+#         the distribution default values or more restrictive.
+
+# File: /etc/passwd
+os_passwd_file: "/etc/passwd"
+os_passwd_owner: "root"
+os_passwd_group: "root"
+os_passwd_mode: "0644"
+
+# File: /etc/passwd-
+os_passwdm_file: "/etc/passwd-"
+os_passwdm_owner: "root"
+os_passwdm_group: "root"
+os_passwdm_mode: "0644"
+
+# File: /etc/shadow
+os_shadow_file: "/etc/shadow"
+os_shadow_owner: "root"
+os_shadow_group: "shadow"
+os_shadow_mode: "0640"
+
+# File: /etc/shadow-
+os_shadowm_file: "/etc/shadow-"
+os_shadowm_owner: "root"
+os_shadowm_group: "shadow"
+os_shadowm_mode: "0640"
+
+# File: /etc/group
+os_group_file: "/etc/group"
+os_group_owner: "root"
+os_group_group: "root"
+os_group_mode: "0644"
+
+# File: /etc/group-
+os_groupm_file: "/etc/group-"
+os_groupm_owner: "root"
+os_groupm_group: "root"
+os_groupm_mode: "0644"
+
+os_check_gshadow: false
+# File: /etc/gshadow
+os_gshadow_file: "/etc/gshadow"
+os_gshadow_owner: "root"
+os_gshadow_group: "shadow"
+os_gshadow_mode: "0640"
+
+# File: /etc/gshadow-
+os_gshadowm_file: "/etc/gshadow-"
+os_gshadowm_owner: "root"
+os_gshadowm_group: "shadow"
+os_gshadowm_mode: "0640"
+
+# File: /boot/grub/grub.cfg
+os_grub_file: "{{ os_grub_config_file }}"
+os_grub_owner: "root"
+os_grub_group: "root"
+os_grub_mode: "0444"
+
+# Log files in /var/log
+os_logfile_mode: "o-wx"
+
+# File: /etc/sysctl.conf
+os_sysctl_file: "/etc/sysctl.conf"
+os_sysctl_owner: "root"
+os_sysctl_group: "root"
+os_sysctl_mode: "0644"
+
+# File: /etc/ssh/sshd_config
+os_sshd_conf_file: "/etc/ssh/sshd_config"
+os_sshd_conf_owner: "root"
+os_sshd_conf_group: "root"
+os_sshd_conf_mode: "0644"

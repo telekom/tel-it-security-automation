@@ -1,0 +1,31 @@
+---
+# tel-it-security-automation :- Ansible roles for automated security hardening.  
+# Copyright (c) 2019 Markus Schumburg, [...] Deutsche Telekom AG 
+# contact: devsecops@telekom.de 
+# This file is distributed under the conditions of the Apache-2.0 license. 
+# For details see the files LICENSING, LICENSE, and/or COPYING on the toplevel.
+
+# ========================================================================
+# Deutsch Telekom IT - DevSecOps Team
+# ------------------------------------------------------------------------
+# Security Hardening & Compliance Checks
+# Linux OS for Servers (3.65)
+#
+# Vars: 04 IPTables
+# ========================================================================
+
+# Req-46: If iptables is used, policies for loopback traffic must be 
+#         configured.
+
+# Req-47: If iptables is used, policies for outbound and established 
+#         connections must be configured.
+iptables_protocols:
+  - "tcp"
+  - "udp"
+  - "icmp"
+  
+# Req-48: If iptables is used, policies must exist for all ports in 
+#         listening state.
+
+# Req-49: If iptables is used, the default policy must be configured to 
+#         drop all traffic.

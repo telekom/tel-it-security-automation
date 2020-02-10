@@ -1,0 +1,50 @@
+# tel-it-security-automation :- Ansible roles for automated security hardening.  
+# Copyright (c) 2019 Markus Schumburg, [...] Deutsche Telekom AG 
+# contact: devsecops@telekom.de 
+# This file is distributed under the conditions of the Apache-2.0 license. 
+# For details see the files LICENSING, LICENSE, and/or COPYING on the toplevel.
+
+# ========================================================================
+# Deutsch Telekom IT - DevSecOps Team
+# Security Hardening & Compliance Checks
+# ------------------------------------------------------------------------
+# File generated during automated hardening with Ansible
+# ========================================================================
+{{log_rotate_time}}
+
+# use the syslog group by default, since this is the owning group
+# of /var/log/syslog. (Ubuntu)
+{{ 'su root syslog' if (os_su_root_syslog|bool) else '#su root syslog' }}
+
+rotate {{log_rotate_count}}
+
+# create new (empty) log files after rotating old ones
+create
+
+# use date as a suffix of the rotated file
+dateext
+
+# compress log files
+{{ 'compress' if (log_rotate_compress|bool) else '#compress' }}
+
+# RPM packages drop log rotation information into this directory
+include /etc/logrotate.d
+
+# no packages own wtmp and btmp -- we'll rotate them here
+/var/log/wtmp {
+    missingok
+    {{log_rotate_time}}
+    create 0660 root utmp
+    maxsize {{log_rotate_maxsize}}
+    rotate {{log_rotate_count}}
+}
+
+/var/log/btmp {
+    missingok
+    {{log_rotate_time}}
+    create 0660 root utmp
+    maxsize {{log_rotate_maxsize}}
+    rotate {{log_rotate_count}}
+}
+
+# system-specific logs may be also be configured here.

@@ -1,0 +1,124 @@
+---
+# tel-it-security-automation :- Ansible roles for automated security hardening.  
+# Copyright (c) 2019 Markus Schumburg, [...] Deutsche Telekom AG 
+# contact: devsecops@telekom.de 
+# This file is distributed under the conditions of the Apache-2.0 license. 
+# For details see the files LICENSING, LICENSE, and/or COPYING on the toplevel.
+
+# ========================================================================
+# Deutsch Telekom IT - DevSecOps Team
+# ------------------------------------------------------------------------
+# Security Hardening & Compliance Checks
+# Linux OS for Servers (3.65)
+#
+# Vars: SSH all
+# ========================================================================
+
+# Req-1: The SSH protocol version 2 must be used.
+# Obsolet with OpenSSH version 7.4 or later
+ssh_version: 2
+
+# Req-2: SSH moduli smaller than 2048 must not be used.
+config_moduli: true
+moduli_minimum: 2048
+
+# Req-3: Only approved key exchange algorithms must be used.
+ssh_key_ex:
+  - curve25519-sha256@libssh.org
+  - diffie-hellman-group-exchange-sha256
+  - ecdh-sha2-nistp521
+  - ecdh-sha2-nistp384
+  - ecdh-sha2-nistp256
+
+# Req-4: Only approved ciphers algorithms must be used.
+ssh_ciphers:
+  - chacha20-poly1305@openssh.com
+  - aes256-gcm@openssh.com
+  - aes128-gcm@openssh.com
+  - aes256-ctr
+  - aes192-ctr
+  - aes128-ctr
+
+# Req-5: Only approved MAC algorithms must be used.
+ssh_macs:
+  - hmac-sha2-512-etm@openssh.com
+  - hmac-sha2-256-etm@openssh.com
+  - hmac-sha2-512
+  - hmac-sha2-256
+
+# Req-6: SSH logging must be enabled.
+ssh_syslogfacility: "AUTH"
+ssh_loglevel: "INFO"
+
+# Req-7: SSH LoginGraceTime must be set to one minute or less.
+login_grace_time: 60
+
+# Req-8: SSH MaxAuthTries must be set to 5 or less.
+max_auth_tries: 5
+max_sessions: 10
+max_startups: "10:30:100"
+
+# Req-9: SSH root login must be disabled.
+allow_root_login: false
+
+# Req-10: SSH strict mode must be enabled.
+strict_mode: true
+
+# Req-11: SSH user authentication must be done with public keys.
+pubkey_auth: true
+
+# Req-12: SSH password authentication must be disabled.
+password_auth: false
+challenge_response: false
+
+# Req-13: SSH IgnoreRhosts must be enabled.
+ignore_rhosts: true
+
+# Req-14: SSH HostbasedAuthentication must be disabled.
+host_based_auth: false
+ignore_known_hosts: true
+
+# Req-15: The usage of the SSH service must be restricted to dedicated groups or users.
+ssh_deny_users: ''
+ssh_allow_users: ''
+ssh_deny_groups: ''
+# Group 'ssh' is configured automatically. Must not be set here!
+ssh_allow_groups: ''
+
+# Req-16: The SSH Idle Timeout Interval must be configured to an adequate time.
+tcp_keepalive: false
+client_alive_interval: 300
+client_alive_count: 0
+
+# Req-17: SSH tunnel devices must be disabled.
+permit_tunnel: false
+
+# Req-18: SSH TCP port forwarding must be disabled.
+allow_tcp_forwarding: false
+
+# Req-19: SSH agent forwarding must be disabled.
+allow_agent_forwarding: false
+
+# Req-20: SSH gateway ports must be disabled.
+gw_ports: false
+
+# Req-21: SSH X11 forwarding must be disabled.
+x11_forwarding: false
+
+# Req-22: SSH PermitUserEnvironment must be disabled.
+permit_user_env: false
+
+# Req-23: SSH PermitEmptyPasswords must be disabled.
+permit_empty_pw: false
+
+# Req-24: If SFTP is activated, internal server of OpenSSH must be used.
+set_sftp_enabled: true
+set_sftp_chroot: true
+sftp_logging: INFO
+sftp_group: 'sftpusr'
+sftp_chroot_dir: /home/%u
+sftp_tcp_forwarding: false
+sftp_agent_forwarding: false
+sftp_password_auth: false
+sftp_root_login: false
+sftp_x11_forwardning: false

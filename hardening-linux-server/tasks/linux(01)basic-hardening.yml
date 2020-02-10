@@ -1,0 +1,716 @@
+---
+# tel-it-security-automation :- Ansible roles for automated security hardening.  
+# Copyright (c) 2019 Markus Schumburg, [...] Deutsche Telekom AG 
+# contact: devsecops@telekom.de 
+# This file is distributed under the conditions of the Apache-2.0 license. 
+# For details see the files LICENSING, LICENSE, and/or COPYING on the toplevel.
+
+# ========================================================================
+# Deutsch Telekom IT - DevSecOps Team
+# ------------------------------------------------------------------------
+# Security Hardening & Compliance Checks
+# Linux OS for Servers (3.65)
+#
+# Tasks: 01 Basic Hardening
+# ========================================================================
+
+# Req-1: Unused services and protocols must be deactivated.
+
+- name: req-001.1 stop default network services
+  systemd:
+    name: "{{ item }}"
+    state: stopped
+    enabled: no
+    force: yes
+    daemon_reload: yes
+  with_items: 
+    - "{{ network_services }}"
+  when: 
+    - config_req_01
+    - network_services|length > 0
+
+- name: req-001.2 stop os specific network services
+  systemd:
+    name: "{{ item }}"
+    state: stopped
+    enabled: no
+    force: yes
+    daemon_reload: yes
+  with_items: 
+    - "{{ os_network_services }}"
+  when: 
+    - config_req_01
+    - os_network_services|length > 0
+
+# Req-2: The reachability of services must be restricted.
+
+- name: req-002.1 install iptables
+  package:
+    name: "iptables"
+    state: present
+  when: config_req_02
+
+- name: req-002.2 install tools to make iptables persistent
+  package:
+    name: '{{ os_iptables_tools }}'
+    state: present
+  when: 
+    - config_req_02
+    - os_iptables_tools|length > 0
+
+# Req-3: Unused software must not be installed or must be uninstalled.
+
+- name: req-003.1 uninstall servers
+  package:
+    name: "{{ item }}"
+    state: absent
+  with_items: 
+    - "{{ servers }}"
+  when: 
+    - config_req_03
+    - servers|length > 0
+
+- name: req-003.2 uninstall os specific servers
+  package:
+    name: "{{ item }}"
+    state: absent
+  with_items:
+    - "{{ os_servers }}"
+  when: 
+    - config_req_03
+    - os_servers|length > 0
+
+- name: req-003.3 uninstall clients
+  package:
+    name: "{{ item }}"
+    state: absent
+  with_items: 
+    - "{{ clients }}"
+  when: 
+    - config_req_03
+    - clients|length > 0
+
+- name: req-003.4 uninstall os specific clients
+  package:
+    name: "{{ item }}"
+    state: absent
+  with_items: 
+    - "{{ os_clients }}"
+  when: 
+    - config_req_03
+    - os_clients|length > 0
+
+- name: req-003.5 uninstall snap (only Ubuntu)
+  apt:
+    name: snapd
+    state: absent
+    purge: yes
+    autoremove: yes
+  when: 
+    - config_req_03
+    - os_uninstall_snap
+
+# Req-4: Dedicated partitions must be used for growing content that can 
+#        influence the availability of the system.
+
+- name: req-004.1 install parted 
+  package:
+    name: parted
+    state: present
+  when: config_req_04
+
+- name: req-004.2 find root partion
+  shell: df --output=source / | sed 's#[0-9]##g' | grep /dev
+  register: root_partition
+  changed_when: false
+  when: config_req_04
+
+- name: req-004.3 find 20GB disk
+  shell: fdisk -lu | egrep " 21474836480 " |  grep -v "{{ root_partition.stdout }}" | sort -k5 -nr | head -1 | cut -f2 -d ' ' | tr -d ':' | grep '/dev'
+  register: second_partition
+  ignore_errors: true
+  changed_when: false
+  when: config_req_04 
+
+- name: req-004.4 check if a usable disk is available
+  block:
+    - name: req-004.5 create partitions
+      block:
+        ### create partition
+        - name: req-004.6 create partition "{{ second_partition.stdout }}1"
+          parted:
+            device: "{{ second_partition.stdout }}"
+            number: 1
+            state: present
+            part_end: 9.99GiB
+          register: part_list
+
+        - name: req-004.7 create partition "{{ second_partition.stdout }}2"
+          parted:
+            device: "{{ second_partition.stdout }}"
+            number: 2
+            state: present
+            part_start: 9.99GiB
+          register: part_list
+
+        - name: req-004.8 update partition information
+          parted:
+            device: "{{ second_partition.stdout }}"
+            unit: "GiB"
+          register: part_list
+          ignore_errors: true
+  
+        ### create filesystems
+        - name: req-004.9 create "{{ os_filesystem_type }}" FS using on all partition on "{{ second_partition.stdout }}"
+          filesystem:
+            dev: "{{ second_partition.stdout }}{{ item.num }}"
+            fstype: "{{ os_filesystem_type }}"
+          with_items: "{{ part_list.partitions }}"
+          loop_control:
+            label: working on "{{ second_partition.stdout }}{{ item.num }}"
+
+        ### mount filesystems temporary
+        - name: req-004.10 create temporary directories
+          file:
+            path: "{{ item }}"
+            state: "directory"
+          with_items: "{{ create_temporary_directory }}"
+
+        - name: req-004.11 get current partition information from "{{ second_partition.stdout }}"
+          parted:
+            device: "{{ second_partition.stdout }}"
+            unit: GiB
+          register: part_list
+
+        - name: req-004.12 mount "{{ part_list.partitions[1].fstype }}" partion "{{ second_partition.stdout }}2" to /mnt/tmp
+          mount:
+            path: "/mnt/tmp"
+            src: "{{ second_partition.stdout }}2"
+            fstype: "{{ part_list.partitions[1].fstype }}"
+            state: "mounted"
+
+        - name: req-004.13 be sure /tmp has data
+          copy:
+            dest: /tmp/some_temporary_data
+            content: "ansible was here"
+
+        - name: req-004.14 move /var/* to temporary directory /mnt/var
+          shell: "rsync -aqxP /var/* /mnt/var"
+
+        - name: req-004.15 mv /tmp/* to /mnt/tmp
+          shell: "mv -f /tmp/* /mnt/tmp"
+          ignore_errors: true
+
+        - name: req-004.16 remove temporary mount /mnt/tmp from /etc/fstab
+          mount:
+            path: "/mnt/tmp"
+            src: "{{ second_partition.stdout }}2"
+            state: "absent"
+
+        ### mount filesystems
+        - name: req-004.17 mount partion "{{ second_partition.stdout }}1" to /var
+          mount:
+            path: "/var"
+            src: "{{ second_partition.stdout }}1"
+            fstype: "{{ part_list.partitions[0].fstype }}"
+            opts: "nodev,nosuid"
+            state: "mounted"
+
+        - name: req-004.18 mount partion "{{ second_partition.stdout }}2" to /tmp
+          mount:
+            path: "/tmp"
+            src: "{{ second_partition.stdout }}2"
+            fstype: "{{ part_list.partitions[1].fstype }}"
+            opts: "nodev,nosuid"
+            state: "mounted"
+
+        - name: req-004.19 move /mnt/var/* back to original directory /var
+          shell: "rsync -aqxP /mnt/var/* /var"
+
+        - name: req-004.20 delete temporary directories
+          file:
+            path: "{{ item }}"
+            state: "absent"
+          with_items: "{{ delete_temporary_directory }}"
+          
+          #Whole root filesystem relabel needed due to error on Req30
+        - name: req-004.21 relabel root filesystem 
+          shell: "restorecon -r /"
+          when: os_restorecon_command
+  when: 
+    - config_req_04
+    - second_partition is succeeded
+
+# Req-5: Parameters nodev:  nosuid and noexec must be set for partitions 
+#        where this is applicable.
+
+- name: req-005.1 read the fstab file
+  shell: 'cat /etc/fstab | grep "^/" | cut -d" " -f2'
+  changed_when: false
+  check_mode: no
+  register: fstab_file
+  when: config_req_05
+
+- name: req-005.2 mount non-existing mounts with needed options
+  mount:
+    name: "{{ item.point }}"
+    src: "{{ item.point }}"
+    fstype: "none"
+    opts: "{{ item.opts }}"
+    state: mounted
+  with_items: 
+    - "{{ partitions_security_nodev_nosuid_noexec }}"
+    - "{{ partitions_security_nodev_nosuid }}"
+    - "{{ partitions_security_nodev }}"
+  when: 
+    - config_req_05
+    - fstab_file.stdout.find('{{ item.point.split("/")[1] }}') == -1
+
+- name: req-005.3 remount mounted FS to be sure they have needed options
+  command: "mount -o remount {{ item.point }}"
+  with_items: 
+    - "{{ partitions_security_nodev_nosuid_noexec }}"
+    - "{{ partitions_security_nodev_nosuid }}"
+    - "{{ partitions_security_nodev }}"
+  when: 
+    - config_req_05
+    - fstab_file.stdout.find('{{ item.point.split("/")[1] }}') == -1 
+
+# Req-6: Automounting must be disabled.
+
+- name: req-006.1 check if autofs.conf exists
+  stat:
+    path: /etc/init/autofs.conf
+  register: check_autofs
+  when: config_req_06
+
+- name: req-006.2 uninstall autofs
+  package:
+    name: 'autofs'
+    state: absent
+  when: 
+    - config_req_06
+    - check_autofs.stat.exists == true
+
+# Req-7: The use of at/cron must be restricted to authorized users.
+
+- name: req-007.1 remove /etc/cron.deny and /etc/at.deny files
+  file:
+    path: "{{ item }}"
+    state: absent
+  with_items: "{{ delete_files_cron_at_deny }}"
+  when: config_req_07
+
+- name: req-007.2 create files /etc/cron.allow and /etc/at.allow with permissions 0644
+  file:
+    path: "{{ item }}"
+    state: touch
+    owner: root
+    group: root
+    mode:  0600
+  with_items: "{{ create_files_for_restricted_cron_at }}"
+  when: config_req_07
+
+- name: req-007.2 add authorized users as only users able to modify at/cron
+  lineinfile:
+    dest: "{{ item }}"
+    line: "{{authorized_user_for_cron_at}}"
+    insertafter: EOF
+  with_items: "{{ create_files_for_restricted_cron_at }}"
+  when: config_req_07
+
+# Req-8: Sticky bit must be set on all world-writable directories.
+
+- name: req-008.1 find world-writable directories 
+  shell: df --local -P | awk {'if (NR!=1) print $6'} | xargs -I '{}' find '{}' -xdev -type d -perm -0002 2>/dev/null
+  register: find_sticky
+  changed_when: false
+  check_mode: no
+  when: config_req_08
+
+- name: req-008.2 set sticky bit on world-writable directories # adding the sticky bit "t" to the folders
+  file:
+    path: "{{ item }}"
+    mode: o+t
+    state: directory
+  with_items: "{{ find_sticky.stdout_lines  | default([]) }}"
+  when: 
+    - config_req_08
+    - find_sticky is defined
+
+# Req-9: No regular files that are world writable must exist.
+
+- name: req-009.1 find world-writable files
+  shell: df --local -P | awk {'if (NR!=1) print $6'} | xargs -I '{}' find '{}' -xdev -type f -perm -0002 2>/dev/null
+  register: find_files
+  changed_when: false
+  check_mode: no
+  when: config_req_09
+  
+- name: req-009.2 change permissions of world-writable files
+  file:
+    path: "{{ item }}"
+    mode: o-w
+  with_items: "{{ find_files.stdout_lines | default([]) }}"
+  when: 
+    - config_req_09
+    - find_files is defined
+
+# Req-10: Passwords must be protected with an appropriate hashing function.
+
+- name: req-010.1 set password encryption to sha-512 in login.defs
+  lineinfile:
+    dest: '/etc/login.defs'
+    state: present
+    regexp: '^ENCRYPT_METHOD*'
+    line: 'ENCRYPT_METHOD SHA512'
+  when: config_req_10
+
+- name: req-010.2 set max round for sha-512
+  lineinfile:
+    dest: '/etc/login.defs'
+    state: present
+    regexp: '^SHA_CRYPT_MAX_ROUNDS*'
+    line: 'SHA_CRYPT_MAX_ROUNDS {{ sha512_rounds_max }}'
+  when: config_req_10
+
+- name: req-010.3 set min rounds for sha-512
+  lineinfile:
+    dest: '/etc/login.defs'
+    state: present
+    regexp: '^SHA_CRYPT_MIN_ROUNDS*'
+    insertafter: '^ENCRYPT_METHOD SHA512'
+    line: 'SHA_CRYPT_MIN_ROUNDS {{ sha512_rounds_min }}'
+  when: config_req_10
+
+# Req-11: The default user umask must be 027 or more restrictive.
+
+- name: req-011.1 set umask to be 027
+  lineinfile:
+    dest: '/etc/login.defs'
+    line: 'UMASK {{ set_umask }}'
+    regexp: '^UMASK'
+    state: present
+  when: config_req_11
+
+# Req-12: Not needed SUID and SGID bits must be removed from executables.
+
+- name: req-012.1 find executables with SUID and SGID bits
+  shell: df --local -P | awk {'if (NR!=1) print $6'} | xargs -I '{}' find '{}' -xdev -type f \( -perm -4000 -o -perm -2000 \) -print 2>/dev/null
+  register: found_executables
+  changed_when: false
+  when: config_req_12
+
+- name: req-012.2 compare allowed executables with found executables
+  set_fact:
+    compared_executables: "{{ found_executables.stdout_lines | default([]) | difference(allowed_executables) }}"
+  when: config_req_12
+
+- name: req-012.3 remove suid and sgid bit from executables that are not allowed
+  file:
+    path: '{{ item }}'
+    mode: 'a-s'
+    state: 'file'
+    follow: 'yes'
+  with_items: "{{ compared_executables }}"  
+  when: config_req_12
+
+# Req-13: Core dumps must be disabled.
+
+- name: req-013.1 disable core dumps for all users in limits.conf
+  lineinfile:
+    path: '/etc/security/limits.conf'
+    state: present
+    regexp: '^[*] {{ item }} core 0'
+    insertbefore: '^[#] End of file'
+    line: '* {{ item }} core 0'
+  with_items:
+    - "soft"
+    - "hard"
+  when: config_req_13
+
+- name: req-014.3 check sysctl-settings for coredumps
+  sysctl:
+    name: '{{ item.key }}'
+    value: '{{ item.value }}'
+    sysctl_set: yes
+    state: present
+    reload: yes
+  with_dict: '{{ coredumps }}'
+  when: config_req_13
+
+- name: re-014.4 disable apport as bugfix for Ubuntu 
+  lineinfile:
+    path: /etc/default/apport
+    state: present
+    regexp: "enabled=1"
+    line: "enabled=0"
+  when: 
+    - config_req_13
+    - os_disable_apport
+
+# Req-14: Protection against buffer overflows must be enabled.
+
+- name: req-014.1 check if nx is enabled in bios
+  shell: dmesg | awk -F' ' '{if ($3 == "NX") print $7}'
+  register: check_nx
+  check_mode: no
+  changed_when: check_nx.stdout != "active"
+  when: config_req_14
+
+- name: reg-014.2 change sysctl-settings
+  sysctl:
+    name: '{{ item.key }}'
+    value: '{{ item.value }}'
+    state: present
+    sysctl_set: yes
+    reload: yes
+  with_dict: '{{ enable_bufferoverflow_protection }}'
+  when: config_req_14
+
+# Req-15: IPv4 protocol stack must be securely configured.
+
+- name: req-015.1 change sysctl-settings for ipv4
+  sysctl:
+    name: '{{ item.key }}'
+    value: '{{ item.value }}'
+    sysctl_set: yes
+    state: present
+    reload: yes
+  with_dict: '{{ network_config_ipv4 }}'
+  when: 
+    - config_req_15
+    - ansible_all_ipv4_addresses is defined
+
+# Req-16: IPv6 protocol stack must be securely configured.
+
+- name: req-016.1 change sysctl-settings if ipv6 is disabled
+  sysctl:
+    name: '{{ item.key }}'
+    value: '{{ item.value }}'
+    sysctl_set: yes
+    state: present
+    reload: yes
+  with_dict: '{{ network_config_ipv6_disabled }}'
+  when: 
+    - config_req_16
+    - ansible_all_ipv6_addresses is undefined
+
+- name: req-016.2 change sysctl-settings if ipv6 is enabled
+  sysctl:
+    name: '{{ item.key }}'
+    value: '{{ item.value }}'
+    sysctl_set: yes
+    state: present
+    reload: yes
+  with_dict: '{{ network_config_ipv6_enabled }}'
+  when: 
+    - config_req_16
+    - ansible_all_ipv6_addresses
+
+# Req-17: Emerged vulnerabilities in software and hardware of a system must 
+#         be fixed or protected against misuse.
+
+# - NOTE ------------------------------------------------------------------
+# System update must be done before security configuration. The task
+# to update the system is in the file '/tasks/main.yml'.
+# ------------------------------------------------------------------------
+
+# Req-18: GPG check for repository server must be activated and corresponding
+#         keys for trustable repositories must be configured.
+
+# - NOTE ------------------------------------------------------------------
+# Not implemented in this version! Will be implemented in an upcoming 
+# version.
+# -------------------------------------------------------------------------
+
+# when: config_req_18
+
+# Needed for Req 19 & 20: calculates UID_MIN from /etc/login.defs
+
+- name: get uid from file login.defs
+  shell: awk '/^\s*UID_MIN\s*([0-9]*).*?$/ {print $2}' /etc/login.defs
+  register: uid_min
+  changed_when: false
+  check_mode: no
+  when:
+    - config_req_19
+    - config_req_20
+
+- name: calculate uid_max from uid_min
+  set_fact:
+    uid_max: '{{ uid_min.stdout | int - 1 }}'
+  changed_when: false
+  check_mode: no
+  when:
+    - config_req_19
+    - config_req_20
+    - uid_min is defined
+
+- name: set uid_max if no login.defs exist
+  set_fact:
+    uid_max: "{{ os_uid_default }}"
+  changed_when: false
+  check_mode: no
+  when:
+    - config_req_19
+    - config_req_20
+    - not uid_min
+
+# Req-19: User accounts must be used that allow unambiguous identification 
+#         of the user.
+
+- name: req-019.1 get all users that are not system accounts
+  shell: awk -F':' '{ if ( $3 >= {{ uid_max }} && $7 != "{{ os_nologin_path }}" && $7 != "/bin/false" ) print $1 }' /etc/passwd
+  register: user_list
+  changed_when: false
+  check_mode: no
+  when: config_req_19
+
+- name: req-019.2 remove allowed users from list of found users
+  set_fact:
+    users_to_delete: '{{ user_list.stdout_lines | difference(set_allowed_users) }}'
+  check_mode: no
+  when: config_req_19
+
+- name: req-019.3 check and delete default users from the system
+  user:
+    name: "{{ item }}"
+    state: absent
+  with_items: "{{ users_to_delete }}"
+  when: config_req_19
+
+# Req-20: System accounts must be non-login.
+
+- name: req-020.1 check for system accounts with login
+  shell: awk -F':' '($3<{{ uid_max }} && $7=="/bin/bash") {print $1}' /etc/passwd
+  register: check_sys_accounts
+  changed_when: false
+  check_mode: no
+  when: config_req_20
+
+- name: req-020.2 remove system users from whitelist
+  set_fact:
+    system_users_list: '{{ check_sys_accounts.stdout_lines | difference(system_users_whitelist) }}'
+  changed_when: false
+  check_mode: no
+  when: config_req_20
+
+- name: req-020.3 change system users to nologin
+  user:
+    name: '{{ item }}'
+    shell: '{{ os_nologin_path }}'
+    password: '*'
+    createhome: False
+  with_flattened:
+    - '{{ system_users_list | default([]) | difference(allowed_users) | list }}'
+  when: config_req_20
+
+# Req-21: User accounts must be protected against unauthorized use by at 
+#         least one authentication attribute.
+
+- name: req-021.1 check for user accounts without password
+  shell: awk -F":" '($2 == "" && $2 != "!" && $2 !="*" && $1!="+@{{ ansible_hostname }}") {print $1}' /etc/shadow
+  register: user_without_pw
+  changed_when: false
+  check_mode: no
+  when: config_req_21
+
+- name: req-021.2 lock all accounts without password
+  user:
+    name: "{{ item }}"
+    password_lock: yes
+  with_items: "{{ user_without_pw.stdout_lines }}"
+  when: 
+    - config_req_21
+    - user_without_pw.stdout != ""
+  
+# Req-22: User accounts with extensive rights must be protected with two 
+#         authentication attributes.
+
+# - NOTE ------------------------------------------------------------------
+# Requirement is not implemented! If SSH is used, make sure to enable 
+# login with only with key authentication!
+# -------------------------------------------------------------------------
+
+# when: config_req_22
+
+# Req-23: The system must be connected to a central system for user 
+#         administration.
+
+# - NOTE ------------------------------------------------------------------
+# Requirement is not implemented! 
+# -------------------------------------------------------------------------
+
+# when: config_req_23
+
+# Req-24: Authentication must be used for single user mode.
+
+- name: req-024.1 check if password for root user is set
+  shell: awk -F":" '($1 == "root" && $2 == "[!*]") {print $1}' /etc/shadow
+  register: check_root_pw
+  changed_when: check_root_pw.stdout != ""
+  check_mode: no
+  when: 
+    - config_req_24
+    - os_config_root_password
+
+- name: req-024.2 generate a secret root password
+  shell: date +%s | sha256sum | base64 | head -c 20
+  register: root_password
+  changed_when: false
+  when: 
+    - config_req_24
+    - os_config_root_password
+    - not ansible_check_mode
+    - check_root_pw.stdout != ""
+
+- name: req-024.3 set a root password
+  shell: printf "{{ root_password }}\n{{ root_password }}" | passwd root
+  changed_when: false
+  when:
+    - config_req_24
+    - os_config_root_password
+    - not ansible_check_mode
+    - check_root_pw.stdout != ""
+
+- name: req-024.4 set single user mode
+  lineinfile:
+    dest: '{{ item }}'
+    state: present
+    regexp: '^ExecStart=*'
+    line: 'ExecStart=-/bin/sh -c "/usr/sbin/sulogin; /usr/bin/systemctl --fail --no-block default"'
+  with_items:
+    - "/usr/lib/systemd/system/rescue.service"
+    - "/usr/lib/systemd/system/emergency.service"
+  when:
+    - config_req_24
+    - not os_config_root_password
+
+# Req-25: The management of the operating system must be done via a dedicated 
+#         management network.
+
+# - NOTE ------------------------------------------------------------------
+# Requirement is not implemented! 
+# -------------------------------------------------------------------------
+
+# when: config_req_25 and mgmt_interface_ipv4 != ""
+# when: config_req_25 and mgmt_interface_ipv6 != ""
+
+# Req-26: Management services must be bound to the management network.
+
+# - NOTE ------------------------------------------------------------------
+# Requirement is not implemented! 
+# -------------------------------------------------------------------------
+
+# when: config_req_26
+
+# Req-27: Encrypted protocols must be used for management access to 
+#         administrate the operating system.
+
+# - NOTE ------------------------------------------------------------------
+# Requirement is not implemented! Use SSH or other encrypted service for
+# system management to be compliant!
+# -------------------------------------------------------------------------
+
+# when: config_req_27

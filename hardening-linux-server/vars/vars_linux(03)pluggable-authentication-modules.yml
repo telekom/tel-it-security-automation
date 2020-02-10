@@ -1,0 +1,42 @@
+---
+# tel-it-security-automation :- Ansible roles for automated security hardening.  
+# Copyright (c) 2019 Markus Schumburg, [...] Deutsche Telekom AG 
+# contact: devsecops@telekom.de 
+# This file is distributed under the conditions of the Apache-2.0 license. 
+# For details see the files LICENSING, LICENSE, and/or COPYING on the toplevel.
+
+# ========================================================================
+# Deutsch Telekom IT - DevSecOps Team
+# ------------------------------------------------------------------------
+# Security Hardening & Compliance Checks
+# Linux OS for Servers (3.65)
+#
+# Vars: 03 Pluggable Authentication Modules
+# ========================================================================
+
+# Req-42: If PAM is used, an appropriate hashing function must be configured 
+#         for password protection for PAM.
+sha_crypt_max_rounds: 640000
+encryption_method: sha512
+
+# Req-43: If PAM is used, password rules must be configured for PAM to force 
+#         the use of passwords with a minimum length of 8 characters and a 
+#         combination of three out of the following categories: upper cases, 
+#         lower case, numbers and special characters.
+
+# NOTE: New requirement from Telekom Security (see SecReq. 3.01) is a length
+# of 12 characters!
+pam_password_length: "12"
+pam_character_classes: "3"
+pam_password_maxrepeat: "3"
+
+# Req-44: If PAM is used, a protection against brute force and dictionary 
+#         attacks that hinder password guessing must be configured in PAM.
+failed_login_attemps: 5
+unlock_time: 600
+
+# Req-45: If PAM is used , PAM must be configured that motd did not contain 
+#         any sensitive data.
+files_motd:
+  - "login"
+  - "sshd"

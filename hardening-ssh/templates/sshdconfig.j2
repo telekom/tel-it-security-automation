@@ -1,0 +1,106 @@
+# ========================================================================
+# Deutsch Telekom IT - DevSecOps Team - Security Hardening
+#
+# File generated during automated hardening with Ansible
+# ========================================================================
+
+# See the sshd_config(5) manpage for details
+
+{% for port in ssh_server_ports -%}
+Port {{port}}
+{% endfor %}
+
+# Sets address family to 'inet' if IPv4 only is used or 'any' for IPv4 and 6.
+AddressFamily {{ 'any' if (config_ipv6_enable|bool) else 'inet' }}
+
+{% if config_mgmt_interface_ipv4 %}
+ListenAddress {{ mgmt_interface_ipv4 }}
+{% endif %}
+{% if config_mgmt_interface_ipv6 %}
+ListenAddress {{ mgmt_interface_ipv6 }}
+{% endif %}
+
+# Obsolet with OpenSSH version 7.4 and later
+{% if os_config_ssh_version %}
+Protocol {{ ssh_version }}
+{% endif %}
+
+# HostKeys for protocol version 2
+HostKey /etc/ssh/ssh_host_rsa_key
+HostKey /etc/ssh/ssh_host_dsa_key
+HostKey /etc/ssh/ssh_host_ecdsa_key
+HostKey /etc/ssh/ssh_host_ed25519_key
+
+# Key Exchange Algorithms
+KexAlgorithms {{ ssh_key_ex | join(',') }}
+# Ciphers
+Ciphers {{ ssh_ciphers | join(',') }}
+
+MACs {{ ssh_macs | join(',') }}
+
+SyslogFacility {{ssh_syslogfacility}}
+LogLevel {{ssh_loglevel}}
+
+LoginGraceTime {{login_grace_time}}
+PermitRootLogin {{ 'without-password' if (allow_root_login|bool) else 'no' }}
+StrictModes {{ 'yes' if (strict_mode|bool) else 'no' }}
+MaxAuthTries {{max_auth_tries}}
+MaxSessions {{max_sessions}}
+MaxStartups {{max_startups}}
+
+PubkeyAuthentication {{ 'yes' if (pubkey_auth|bool) else 'no' }}
+
+AuthorizedKeysFile .ssh/authorized_keys
+
+IgnoreRhosts {{ 'yes' if (ignore_rhosts|bool) else 'no' }}
+
+HostbasedAuthentication {{ 'yes' if (host_based_auth|bool) else 'no' }}
+IgnoreUserKnownHosts {{ 'yes' if (ignore_known_hosts|bool) else 'no' }}
+
+PermitEmptyPasswords {{ 'yes' if (permit_empty_pw|bool) else 'no' }}
+ChallengeResponseAuthentication {{ 'yes' if (challenge_response|bool) else 'no' }}
+PasswordAuthentication {{ 'yes' if (password_auth|bool) else 'no' }}
+
+UsePAM yes
+
+{% if ssh_deny_users -%}
+DenyUsers "{{ssh_deny_users}}"
+{% endif %}
+{% if ssh_allow_users -%}
+AllowUsers {{ssh_allow_users}}
+{% endif %}
+{% if ssh_deny_groups -%}
+DenyGroups {{ssh_deny_groups}}
+{% endif %}
+{% if ssh_allow_groups -%}
+AllowGroups {{os_group_ssh}} {{ssh_allow_groups}}
+{% endif %}
+
+AllowAgentForwarding {{ 'yes' if (allow_agent_forwarding|bool) else 'no' }}
+AllowTcpForwarding {{ 'yes' if (allow_tcp_forwarding|bool) else 'no' }}
+GatewayPorts {{ 'yes' if (gw_ports|bool) else 'no' }}
+X11Forwarding {{ 'yes' if (x11_forwarding|bool) else 'no' }}
+PrintMotd no
+PrintLastLog no
+TCPKeepAlive {{ 'yes' if (tcp_keepalive|bool) else 'no' }}
+PermitUserEnvironment {{ 'yes' if (permit_user_env|bool) else 'no' }}
+ClientAliveInterval {{client_alive_interval}}
+ClientAliveCountMax {{client_alive_count}}
+PermitTunnel {{ 'yes' if (permit_tunnel|bool) else 'no' }}
+
+Banner none
+
+{% if set_sftp_enabled %}
+Subsystem sftp internal-sftp -l {{sftp_logging}}
+
+{% if set_sftp_chroot %}
+Match Group {{sftp_group}}
+    ForceCommand internal-sftp -l {{sftp_logging}}
+    ChrootDirectory {{ sftp_chroot_dir }}
+    AllowTcpForwarding {{ 'yes' if (sftp_tcp_forwarding|bool) else 'no' }}
+    AllowAgentForwarding {{ 'yes' if (sftp_agent_forwarding|bool) else 'no' }}
+    PasswordAuthentication {{ 'yes' if (sftp_password_auth|bool) else 'no' }}
+    PermitRootLogin {{ 'yes' if (sftp_root_login|bool) else 'no' }}
+    X11Forwarding {{ 'yes' if (sftp_x11_forwardning|bool) else 'no' }}
+{% endif %}
+{% endif %}

@@ -1,0 +1,37 @@
+---
+# tel-it-security-automation :- Ansible roles for automated security hardening.  
+# Copyright (c) 2019 Markus Schumburg, [...] Deutsche Telekom AG 
+# contact: devsecops@telekom.de 
+# This file is distributed under the conditions of the Apache-2.0 license. 
+# For details see the files LICENSING, LICENSE, and/or COPYING on the toplevel.
+
+# ========================================================================
+# Deutsch Telekom IT - DevSecOps Team
+# ------------------------------------------------------------------------
+# Security Hardening & Compliance Checks
+# Secure Shell (3.04)
+#
+# Vars for Suse Linux Enterprise Server 12
+# ========================================================================
+
+# =IMPORTANT==============================================================
+#
+#  Note: Changing variables in this file can affect security compliance!
+#
+# ========================================================================
+
+# Obsolet with OpenSSH version 7.4 or later (only used with Ubuntu 16.04)
+os_config_ssh_version: true
+
+# Do not change group sshd! Add only additional groups if  needed. 
+# Otherwise, you can't login afterwards!
+os_group_ssh: "sshd"
+
+# File: /etc/ssh/sshd_config
+os_sshd_conf_file: "/etc/ssh/sshd_config"
+os_sshd_conf_owner: "root"
+os_sshd_conf_group: "root"
+os_sshd_conf_mode: "og-rwx"
+
+# SSH service
+os_sshd_service_name: sshd

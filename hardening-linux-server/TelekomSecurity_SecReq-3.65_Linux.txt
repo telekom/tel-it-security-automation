@@ -1,0 +1,77 @@
+==========================================================================
+Document: Security Requirement - Linux OS for Servers
+Doc-No  : 3.65
+Author  : Telekom Security
+Version : 1.2
+Date    : Jul 1, 2019
+Source  : https://psa-portal.telekom.de
+==========================================================================
+
+
+Req-1: Unused services and protocols must be deactivated.
+Req-2: The reachability of services must be restricted.
+Req-3: Unused software must not be installed or must be uninstalled.
+Req-4: Dedicated partitions must be used for growing content that can influence the availability of the system.
+Req-5: Parameters nodev:  nosuid and noexec must be set for partitions where this is applicable.
+Req-6: Automounting must be disabled.
+Req-7: The use of at/cron must be restricted to authorized users.
+Req-8: Sticky bit must be set on all world-writable directories.
+Req-9: No regular files that are world writable must exist.
+Req-10: Passwords must be protected with an appropriate hashing function.
+Req-11: The default user umask must be 027 or more restrictive.
+Req-12: Not needed SUID and SGID bits must be removed from executables.
+Req-13: Core dumps must be disabled.
+Req-14: Protection against buffer overflows must be enabled.
+Req-15: IPv4 protocol stack must be securely configured.
+Req-16: IPv6 protocol stack must be securely configured.
+Req-17: Emerged vulnerabilities in software and hardware of a system must be fixed or protected against misuse.
+Req-18: GPG check for repository server must be activated and corresponding keys for trustable repositories must be configured.
+Req-19: User accounts must be used that allow unambiguous identification of the user.
+Req-20: System accounts must be non-login.
+Req-21: User accounts must be protected against unauthorized use by at least one authentication attribute.
+Req-22: User accounts with extensive rights must be protected with two authentication attributes.
+Req-23: The system must be connected to a central system for user administration.
+Req-24: Authentication must be used for single user mode.
+Req-25: The management of the operating system must be done via a dedicated management network.
+Req-26: Management services must be bound to the management network.
+Req-27: Encrypted protocols must be used for management access to administrate the operating system.
+Req-28: Logging must be enabled in bootloader configuration.
+Req-29: Log rotation for logfiles must be configured.
+Req-30: System time must be synchronized against a reference time source.
+Req-31: Auditd service must be used to log security relevant events.
+Req-32: System events must be logged.
+Req-33: Access and Authentication events must be logged.
+Req-34: Account and Group Management events must be logged.
+Req-35: Configuration Change events must be logged.
+Req-36: Auditd configuration must be immutable.
+Req-37: Security relevant logging data must be send to an external system direct after their creation.
+Req-38: If RSyslog is used, the default permission of 640 or more restrictive for logfiles must be configured.
+Req-39: If RSyslog is used, at least one central logging server must be configured.
+Req-40: If Syslog-NG is used, the default permission of 640 or more restrictive for logfiles must be configured.
+Req-41: If Syslog-NG is used, at least one central logging server must be configured.
+Req-42: If PAM is used, an appropriate hashing function must be configured for password protection for PAM.
+Req-43: If PAM is used, password rules must be configured for PAM to force the use of passwords with a minimum length of 8 characters and a combination of three out of the following categories: upper cases, lower case, numbers and special characters.
+Req-44: If PAM is used, a protection against brute force and dictionary attacks that hinder password guessing must be configured in PAM.
+Req-45: If PAM is used , PAM must be configured that motd did not contain any sensitive data.
+Req-46: If iptables is used, policies for loopback traffic must be configured.
+Req-47: If iptables is used, policies for outbound and established connections must be configured.
+Req-48: If iptables is used, policies must exist for all ports in listening state.
+Req-49: If iptables is used, the default policy must be configured to drop all traffic.
+Req-50: If a system has Internet facing services or is a virtualization host, a MAC solution must be used.
+Req-51: If SELinux is used, it must not be disabled in bootloader configuration.
+Req-52: If SELinux is used, its state must be enforced.
+Req-53: If SELinux is used, the policy must be configured.
+Req-54: If SELinux is used, SETroubleshoot and MCS Translation Service must not be installed.
+Req-55: If AppArmor is used, it must not be disabled in bootloader configuration.
+Req-56: AppArmor is used, its state must be enforced.
+Req-57: No legacy + entries must exist in files passwd, shadows and group.
+Req-58: A user's home directory must be owned by the user and have mode 750 or more restrictive.
+Req-59: Default group for the root account must be GID 0.
+Req-60: Root must be the only UID 0 account.
+Req-61: All groups in /etc/passwd must exist in /etc/group.
+Req-62: No duplicate UIDs and GIDs must exist.
+Req-63: No duplicate user and group names must exist.
+Req-64: The shadow group must be empty (only Ubuntu Linux).
+Req-65: No files and directories without assigned user or group must exist.
+Req-66: Permissions of security relevant configuration files must have the distribution default values or more restrictive.
+Req-67: If passwords are used as an authentication attribute, those must be stored using a suitable and approved "Password Hashing" method to protect against offline-attacks like brute force or dictionary attacks.

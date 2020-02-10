@@ -1,0 +1,284 @@
+---
+# tel-it-security-automation :- Ansible roles for automated security hardening.  
+# Copyright (c) 2019 Markus Schumburg, [...] Deutsche Telekom AG 
+# contact: devsecops@telekom.de 
+# This file is distributed under the conditions of the Apache-2.0 license. 
+# For details see the files LICENSING, LICENSE, and/or COPYING on the toplevel.
+
+# ========================================================================
+# Deutsch Telekom IT - DevSecOps Team
+# ------------------------------------------------------------------------
+# Security Hardening & Compliance Checks
+# Linux OS for Servers (3.65)
+#
+# Vars: 01 Basic Hardening
+# ========================================================================
+
+# Req-1: Unused services and protocols must be deactivated.
+
+network_services: ""
+
+# Req-2: The reachability of services must be restricted.
+
+# Req-3: Unused software must not be installed or must be uninstalled.
+servers:
+  - "openbsd-inetd"
+  - "inetutils-inetd"
+  - "xinetd"
+  - "xserver-xorg-core*"
+  - "xterm"
+  - "nfs-kernel-server"
+  - "vsftpd"
+  - "ftpd"
+  - "dovecot-core"
+  - "dovecot-pop3d"
+  - "dovecot-imapd"
+  - "isc-dhcp-server*"
+  - "nis"
+  - "avahi-daemon"
+  - "cups*"
+  - "snmpd"
+  - "samba"
+
+clients:
+  - "talk"
+  - "telnet"
+  - "tftp"
+  - "lftp"
+  - "ftp"
+  - "rsh-redone-client"
+  - "ldap-utils"
+
+# Req-4: Dedicated partitions must be used for growing content that can 
+#        influence the availability of the system.
+delete_temporary_directory:
+  - "/mnt/var/"
+  - "/mnt/tmp/"
+  - "/tmp/some_temporary_data"
+create_temporary_directory:
+  - "/mnt/var/"
+  - "/mnt/tmp/"
+
+# Req-5: Parameters nodev:  nosuid and noexec must be set for partitions 
+#        where this is applicable.
+partitions_security_nodev_nosuid_noexec:
+  - { opts: "bind,nodev,nosuid,noexec", point: "/var/tmp" }
+  - { opts: "bind,nodev,nosuid,noexec", point: "/dev/shm" }
+
+partitions_security_nodev_nosuid:
+  - { opts: "bind,nodev,nosuid", point: "/tmp" }
+
+partitions_security_nodev:
+  - { opts: "bind,nodev", point: "/home" }
+
+# Req-6: Automounting must be disabled.
+
+# Req-7: The use of at/cron must be restricted to authorized users.
+delete_files_cron_at_deny:
+   - "/etc/cron.deny"
+   - "/etc/at.deny"
+
+create_files_for_restricted_cron_at:
+  - "/etc/cron.allow"
+  - "/etc/at.allow"
+
+authorized_user_for_cron_at: "root"
+
+# Req-8: Sticky bit must be set on all world-writable directories.
+
+# Req-9: No regular files that are world writable must exist.
+
+# Req-10: Passwords must be protected with an appropriate hashing function.
+sha512_rounds_min: 640000
+sha512_rounds_max: 640000
+
+# Req-11: The default user umask must be 027 or more restrictive.
+set_umask: "027"
+
+# Req-12: Not needed SUID and SGID bits must be removed from executables.
+allowed_executables:
+  - "/bin/ping"
+  - "/sbin/pam_timestamp_check"
+  - "/sbin/unix_chkpwd"
+  - "/usr/bin/at"
+  - "/usr/bin/gpasswd"
+  - "/usr/bin/locate"
+  - "/usr/bin/newgrp"
+  - "/usr/bin/passwd"
+  - "/usr/bin/ssh-agent"
+  - "/usr/libexec/utempter/utempter"
+  - "/usr/sbin/lockdev"
+  - "/usr/sbin/sendmail.sendmail"
+  - "/usr/bin/expiry"
+  - "/bin/ping6"
+  - "/usr/bin/traceroute6.iputils"
+  - "/sbin/mount.nfs"
+  - "/sbin/umount.nfs"
+  - "/sbin/mount.nfs4"
+  - "/sbin/umount.nfs4"
+  - "/usr/bin/crontab"
+  - "/usr/bin/wall"
+  - "/usr/bin/write"
+  - "/usr/bin/screen"
+  - "/usr/bin/mlocate"
+  - "/usr/bin/chage"
+  - "/usr/bin/chfn"
+  - "/usr/bin/chsh"
+  - "/bin/fusermount"
+  - "/usr/bin/pkexec"
+  - "/usr/bin/sudo"
+  - "/usr/bin/sudoedit"
+  - "/usr/sbin/postdrop"
+  - "/usr/sbin/postqueue"
+  - "/usr/sbin/suexec"
+  - "/usr/sbin/ccreds_validate"
+  - "/usr/lib/dbus-1.0/dbus-daemon-launch-helper"
+  - "/usr/lib/policykit-1/polkit-agent-helper-1"
+  # - NOTE ------------------------------------------------------------------
+  # Enable if snapd is used on Ubuntu 16.04/18.04
+  # Snap uses executables with SUID/SGID with high risk!
+  # -------------------------------------------------------------------------
+  #- "/snap/core/8039/usr/sbin/pppd"
+  #- "/snap/core/8039/usr/lib/openssh/ssh-keysign"
+  #- "/snap/core/8039/usr/lib/snapd/snap-confine"
+  #- "/snap/core/8039/bin/mount"
+  #- "/snap/core/8039/bin/ping"
+  #- "/snap/core/8039/bin/ping6"
+  #- "/snap/core/8039/bin/su"
+  #- "/snap/core/8039/bin/umount"
+  #- "/snap/core/8039/sbin/pam_extrausers_chkpwd"
+  #- "/snap/core/8039/sbin/unix_chkpwd"
+  #- "/snap/core/8039/usr/bin/chage"
+  #- "/snap/core/8039/usr/bin/chfn"
+  #- "/snap/core/8039/usr/bin/chsh"
+  #- "/snap/core/8039/usr/bin/crontab"
+  #- "/snap/core/8039/usr/bin/dotlockfile"
+  #- "/snap/core/8039/usr/bin/wall"
+  #- "/snap/core/8039/usr/lib/dbus-1.0/dbus-daemon-launch-helper"
+  #- "/snap/core/8039/usr/bin/sudo"
+  #- "/snap/core/8039/usr/bin/ssh-agent"
+  #- "/snap/core/8039/usr/bin/passwd"
+  #- "/snap/core/8039/usr/bin/expiry"
+  #- "/snap/core/8039/usr/bin/gpasswd"
+  #- "/snap/core/8039/usr/bin/mail-lock"
+  #- "/snap/core/8039/usr/bin/mail-touchlock"
+  #- "/snap/core/8039/usr/bin/mail-unlock"
+  #- "/snap/core/8039/usr/bin/newgrp"
+
+# Req-13: Core dumps must be disabled.
+coredumps:
+  fs.suid_dumpable: 0
+
+# Req-14: Protection against buffer overflows must be enabled.
+enable_bufferoverflow_protection:
+  kernel.randomize_va_space: 2
+
+# Req-15: IPv4 protocol stack must be securely configured.
+network_config_ipv4:
+  #IPv4 forwarding must be disabled.
+  net.ipv4.ip_forward: 0
+  #IPv4 redirects must not be accepted.
+  net.ipv4.conf.all.accept_redirects: 0
+  net.ipv4.conf.default.accept_redirects: 0
+  #Secure IPv4 redirects must not be accepted.
+  net.ipv4.conf.all.secure_redirects: 1
+  net.ipv4.conf.default.secure_redirects: 1
+  #IPv4 packet redirect sending must be disabled.
+  net.ipv4.conf.all.send_redirects: 0
+  net.ipv4.conf.default.send_redirects: 0
+  #IPv4 source routed packets must not be accepted.
+  net.ipv4.conf.all.accept_source_route: 0
+  net.ipv4.conf.default.accept_source_route: 0
+  #Suspicious packets must be logged
+  net.ipv4.conf.all.log_martians: 1
+  net.ipv4.conf.default.log_martians: 1
+  #Broadcast ICMP requests must be ignored.
+  net.ipv4.icmp_echo_ignore_broadcasts: 1
+  #Bogus ICMP responses must be ignored.
+  net.ipv4.icmp_ignore_bogus_error_responses: 1
+  #Reverse Path Filtering must be enabled.
+  net.ipv4.conf.all.rp_filter: 1
+  net.ipv4.conf.default.rp_filter: 1
+  #TCP SYN Cookies must be enabled.
+  net.ipv4.tcp_syncookies: 1
+  #An ICMP ratelimit must be configured.
+  net.ipv4.icmp_ratelimit: 100
+  net.ipv4.icmp_ratemask: 88089
+  #Timestamp must be disabled.
+  net.ipv4.tcp_timestamps: 0
+  #ARP must be restricted.
+  net.ipv4.conf.all.arp_ignore: 2
+  net.ipv4.conf.all.arp_announce: 2
+  net.ipv4.conf.all.arp_notify: 0
+  net.ipv4.conf.all.arp_accept: 0
+
+# Req-16: IPv6 protocol stack must be securely configured.
+network_config_ipv6_disabled:
+  net.ipv6.conf.all.disable_ipv6: 1
+  net.ipv6.conf.default.disable_ipv6: 1
+network_config_ipv6_enabled:
+  #Enables IPv6
+  net.ipv6.conf.all.disable_ipv6: 0
+  net.ipv6.conf.default.disable_ipv6: 0
+  #IPv6 forwarding must be disabled.
+  net.ipv6.conf.all.forwarding: 0
+  net.ipv6.conf.default.forwarding: 0
+  #IPv6 redirects must not be accepted.
+  net.ipv6.conf.all.accept_redirects: 0
+  net.ipv6.conf.default.accept_redirects: 0
+  #IPv6 source routed packets must not be accepted.
+  net.ipv6.conf.all.accept_source_route: 0
+  net.ipv6.conf.default.accept_source_route: 0
+  #IPv6 router advertisements must not be accepted.
+  net.ipv6.conf.all.accept_ra: 0
+  net.ipv6.conf.default.accept_ra: 0
+  net.ipv6.conf.all.accept_ra_rtr_pref: 0
+  net.ipv6.conf.default.accept_ra_rtr_pref: 0
+  net.ipv6.conf.all.accept_ra_pinfo: 0
+  net.ipv6.conf.default.accept_ra_pinfo: 0
+  net.ipv6.conf.all.accept_ra_defrtr: 0
+  net.ipv6.conf.default.accept_ra_defrtr: 0
+  #IPv6 router solicitations messages must not be accepted.
+  net.ipv6.conf.all.router_solicitations: 0
+  net.ipv6.conf.default.router_solicitations: 0
+  net.ipv6.conf.all.dad_transmits: 0
+  net.ipv6.conf.default.dad_transmits: 0
+  #IPv6 autoconfiguration must be disabled
+  net.ipv6.conf.all.autoconf: 0
+  net.ipv6.conf.default.autoconf: 0
+
+# Req-17: Emerged vulnerabilities in software and hardware of a system must 
+#         be fixed or protected against misuse.
+
+# Req-18: GPG check for repository server must be activated and corresponding
+#         keys for trustable repositories must be configured.
+
+# Req-19: User accounts must be used that allow unambiguous identification 
+#         of the user.
+set_allowed_users: '{{ allowed_users }}'
+
+# Req-20: System accounts must be non-login.
+system_users_whitelist:
+  - "root"
+  - "sync"
+  - "shutdown"
+  - "halt"
+
+# Req-21: User accounts must be protected against unauthorized use by at 
+#         least one authentication attribute.
+
+# Req-22: User accounts with extensive rights must be protected with two 
+#         authentication attributes.
+
+# Req-23: The system must be connected to a central system for user 
+#         administration.
+
+# Req-24: Authentication must be used for single user mode.
+
+# Req-25: The management of the operating system must be done via a dedicated 
+#         management network.
+
+# Req-26: Management services must be bound to the management network.
+
+# Req-27: Encrypted protocols must be used for management access to 
+#         administrate the operating system.

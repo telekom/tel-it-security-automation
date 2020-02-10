@@ -1,0 +1,82 @@
+# tel-it-security-automation :- Ansible roles for automated security hardening.  
+# Copyright (c) 2019 Markus Schumburg, [...] Deutsche Telekom AG 
+# contact: devsecops@telekom.de 
+# This file is distributed under the conditions of the Apache-2.0 license. 
+# For details see the files LICENSING, LICENSE, and/or COPYING on the toplevel.
+
+# ========================================================================
+# Deutsch Telekom IT - DevSecOps Team
+# Security Hardening & Compliance Checks
+# ------------------------------------------------------------------------
+# File generated during automated hardening with Ansible
+# ========================================================================
+
+##
+## === When you're using remote logging, enable on-disk queues ===
+## === in rsyslog.d/remote.conf.                               ===
+##
+## Note, that when the MYSQL, PGSQL, GSSAPI, GnuTLS or SNMP modules
+## (provided in separate rsyslog-module-* packages) are enabled, the
+## configuration can't be used on a system with /usr on a remote
+## filesystem, except on newer systems where initrd mounts /usr.
+## [The modules are linked against libraries installed bellow of
+##  /usr thus also installed in /usr/lib*/rsyslog because of this.]
+##
+
+# ######### Enable On-Disk queues for remote logging ##########
+#
+# An on-disk queue is created for this action. If the remote host is
+# down, messages are spooled to disk and sent when it is up again.
+#
+$WorkDirectory /var/spool/rsyslog # where to place spool files
+$ActionQueueFileName uniqName # unique name prefix for spool files
+$ActionQueueMaxDiskSpace 1g   # 1gb space limit (use as much as possible)
+$ActionQueueSaveOnShutdown on # save messages to disk on shutdown
+$ActionQueueType LinkedList   # run asynchronously
+$ActionResumeRetryCount -1    # infinite retries if host is down
+
+# ######### Sending Messages to Remote Hosts ##########
+
+# Remote Logging
+### CHANGE HERE WHEN NEEDED ###
+# remote host is: name/ip:port, e.g. 192.168.0.1:514, port optional
+*.* @{% if syslog_protocol == 'tcp' %}@{% endif %}{{syslog_server}}:{{syslog_port}}
+
+# ######### Receiving Messages from Remote Hosts ##########
+# TCP Syslog Server:
+# provides TCP syslog reception and GSS-API (if compiled to support it)
+#$ModLoad imtcp.so         # load module
+##$UDPServerAddress 10.10.0.1 # force to listen on this IP only
+#$InputTCPServerRun <port> # Starts a TCP server on selected port
+
+# UDP Syslog Server:
+#$ModLoad imudp.so         # provides UDP syslog reception
+##$UDPServerAddress 10.10.0.1 # force to listen on this IP only
+#$UDPServerRun 514         # start a UDP syslog server at standard port 514
+
+
+########### Encrypting Syslog Traffic with TLS ##########
+# -- TLS Syslog Server:
+## make gtls driver the default
+#$DefaultNetstreamDriver gtls
+#
+## certificate files
+#$DefaultNetstreamDriverCAFile /etc/rsyslog.d/ca.pem
+#$DefaultNetstreamDriverCertFile /etc/rsyslog.d/server_cert.pem
+#$DefaultNetstreamDriverKeyFile /etc/rsyslog.d/server_key.pem
+#
+#$ModLoad imtcp # load TCP listener
+#
+#$InputTCPServerStreamDriverMode 1 # run driver in TLS-only mode
+#$InputTCPServerStreamDriverAuthMode anon # client is NOT authenticated
+#$InputTCPServerRun 10514 # start up listener at port 10514
+#
+# -- TLS Syslog Client:
+## certificate files - just CA for a client
+#$DefaultNetstreamDriverCAFile /etc/rsyslog.d/ca.pem
+#
+## set up the action
+#$DefaultNetstreamDriver gtls # use gtls netstream driver
+#$ActionSendStreamDriverMode 1 # require TLS for the connection
+#$ActionSendStreamDriverAuthMode anon # server is NOT authenticated
+#*.* @@(o)server.example.net:10514 # send (all) messages

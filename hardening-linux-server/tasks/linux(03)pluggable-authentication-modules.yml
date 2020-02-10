@@ -1,0 +1,268 @@
+---
+# tel-it-security-automation :- Ansible roles for automated security hardening.  
+# Copyright (c) 2019 Markus Schumburg, [...] Deutsche Telekom AG 
+# contact: devsecops@telekom.de 
+# This file is distributed under the conditions of the Apache-2.0 license. 
+# For details see the files LICENSING, LICENSE, and/or COPYING on the toplevel.
+
+# ========================================================================
+# Deutsch Telekom IT - DevSecOps Team
+# ------------------------------------------------------------------------
+# Security Hardening & Compliance Checks
+# Linux OS for Servers (3.65)
+#
+# Tasks: 03 Pluggable Authentication Modules
+# ========================================================================
+
+# PAM tasks needed for Req-42 - 45
+
+- name: set variable to enable PAM configuration
+  set_fact:
+    config_pam: true
+  when: ( config_req_42 or config_req_43 ) or
+        ( config_req_44 or config_req_44 )
+
+- name: set variable to disable PAM configuration
+  set_fact:
+    config_pam: false
+  when: 
+    - not config_req_42
+    - not config_req_43
+    - not config_req_44 
+    - not config_req_44
+
+- name: req-42-45.1 register variable for config files for PAM
+  stat:
+    path: "{{ item }}"
+  register: pam_config_files
+  with_items:
+    - "{{ os_pam_config_files }}"
+  when: 
+    - config_pam and not ansible_check_mode
+
+- name: req-42-45.2 register variable for config files for PAM config tools
+  stat:
+    path: "{{ item.0 }}"
+  register: pam_config_tool_files
+  when: (config_pam and not ansible_check_mode) and
+        (item.1.stat.exists and item.1.stat.islnk)
+  with_together:
+    - "{{ os_pam_config_files }}"
+    - "{{ pam_config_files.results }}"
+
+- name: req-42-45.3 copy files from pam config tool to original path
+  copy:
+    src: "{{ item.2.stat.lnk_source }}"
+    dest: "{{ item.0 }}"
+    remote_src: yes
+    follow: no
+  when: (config_pam and not ansible_check_mode) and
+        (item.1.stat.exists and item.1.stat.islnk)
+  with_together: 
+    - "{{ os_pam_config_files }}"
+    - "{{ pam_config_files.results }}"
+    - "{{ pam_config_tool_files.results }}"
+
+# Req-42: If PAM is used, an appropriate hashing function must be configured 
+#         for password protection for PAM.
+
+- name: req-042.1 configure hashing function for password protection for PAM
+  pamd:
+    name: "{{ item }}"
+    type: "{{ os_pam_hashing_type }}"
+    control: "{{ os_pam_hashing_control }}"
+    module_path: "{{ os_pam_hashing_module }}"
+    module_arguments: "{{ os_pam_hashing_module_arg }}"
+    state: args_present
+  with_items: 
+    - "{{ os_pam_config_files }}"
+  when: config_req_42 
+
+# Req-43: If PAM is used, password rules must be configured for PAM to force 
+#         the use of passwords with a minimum length of 8 characters and a 
+#         combination of three out of the following categories: upper cases, 
+#         lower case, numbers and special characters.
+
+# NOTE: New requirement from Telekom Security (see SecReq. 3.01) is a length
+# of 12 characters!
+
+- name: req-043.1 install PAM password modules (Ubuntu)
+  package:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - "{{ os_pam_pwmodules }}"
+  when: 
+    - config_req_43
+    - os_install_pam_pwmodules
+
+- name: req-043.2 configure password rules
+  template:
+    src: pwquality-conf.j2
+    dest: '/etc/security/pwquality.conf'
+    owner: root
+    group: root
+    mode: 0644
+  when: 
+    - config_req_43
+    - os_use_pam_pwquality_conf
+
+- name: req-043.3 configure appropriate password complexity for PAM (Suse)
+  pamd:
+    name: "{{ item }}"
+    type: "{{ os_pam_complexity_type }}"
+    control: "{{ os_pam_complexity_control }}"
+    module_path: "{{ os_pam_complexity_module }}"
+    module_arguments: "{{ os_pam_complexity_module_arg }}"
+    state: updated
+  with_items: 
+    - "{{ os_pam_complexity_files }}"
+  when: 
+    - config_req_43
+    - ansible_os_family == "Suse"
+
+- name: req-043.4 configure appropriate password complexity for PAM (Ubuntu)
+  pamd:
+    name: "{{ item }}"
+    type: "password"
+    control: "[success=1 default=ignore]"
+    module_path: "pam_unix.so"
+    new_type: "{{ os_pam_complexity_type }}"
+    new_control: "{{ os_pam_complexity_control }}"
+    new_module_path: "{{ os_pam_complexity_module }}"
+    module_arguments: "{{ os_pam_complexity_module_arg }}"
+    state: before
+  with_items: 
+    - "{{ os_pam_complexity_files }}"
+  when: 
+    - config_req_43
+    - ansible_distribution == "Ubuntu"
+
+# Req-44: If PAM is used, a protection against brute force and dictionary 
+#         attacks that hinder password guessing must be configured in PAM.
+
+- name: req-044.1 configure brute force protection for PAM (Suse) 1/2
+  pamd:
+    name: "{{ os_pam_fail_login_files }}"
+    type: "auth"
+    control: "include"
+    module_path: "common-auth"
+    new_type: "{{ os_pam_fail_login_type }}"
+    new_control: "{{ os_pam_fail_login_control }}"
+    new_module_path: "{{ os_pam_fail_login_module }}"
+    module_arguments:
+      - "deny={{ failed_login_attemps }}"
+      - "unlock_time={{ unlock_time }}"
+    state: after
+  when: 
+    - config_req_44
+    - ansible_os_family == "Suse"
+
+- name: req-044.2 configure brute force protection for PAM (Suse) 2/2
+  pamd:
+    name: "{{ os_pam_fail_login_files }}"
+    type: "account"
+    control: "include"
+    module_path: "common-account"
+    new_type: "account"
+    new_control: "{{ os_pam_fail_login_control }}"
+    new_module_path: "{{ os_pam_fail_login_module }}"
+    state: after
+  when: 
+    - config_req_44
+    - ansible_os_family == "Suse"
+
+- name: req-044.3 configure brute force protection for PAM (Ubuntu)
+  pamd:
+    name: "{{ os_pam_fail_login_files }}"
+    type: "account"
+    control: "[success=1 new_authtok_reqd=done default=ignore]"
+    module_path: "pam_unix.so"
+    new_type: "{{ os_pam_fail_login_type }}"
+    new_control: "{{ os_pam_fail_login_control }}"
+    new_module_path: "{{ os_pam_fail_login_module }}"
+    module_arguments:
+      - "deny={{ failed_login_attemps }}"
+      - "unlock_time={{ unlock_time }}"
+    state: before
+  when: 
+    - config_req_44
+    - ansible_distribution == "Ubuntu"
+
+- name: req-044.4 configure line 1 for pam_faillock.so
+  pamd:
+    name: "{{ item }}"
+    type: "auth"
+    control: "sufficient"
+    module_path: "pam_unix.so"
+    new_type: "{{ os_pam_fail_login_type }}"
+    new_control: "{{ os_pam_fail_login_control }}"
+    new_module_path: "{{ os_pam_fail_login_module }}"
+    module_arguments: 
+      - "preauth"
+      - "silent"
+      - "deny={{ failed_login_attemps }}"
+      - "unlock_time={{ unlock_time }}"
+    state: before
+  with_items:
+    - "{{ os_pam_fail_login_files }}"
+  when: 
+    - config_req_44
+    - os_pam_fail_login_module == "pam_faillock.so"
+
+- name: req-044.5 configure line 2 for pam_faillock.so
+  pamd:
+    name: "{{ item }}"
+    type: "auth"
+    control:  "required"
+    module_path: "pam_deny.so"
+    new_type: "{{ os_pam_fail_login_type }}"
+    new_control: "{{ os_pam_fail_login_control }}"
+    new_module_path: "{{ os_pam_fail_login_module }}"
+    module_arguments:
+      - "authfail"
+      - "deny={{ failed_login_attemps }}"
+      - "unlock_time={{ unlock_time }}"
+    state: before
+  with_items:
+    - "{{ os_pam_fail_login_files }}"
+  when: 
+    - config_req_44
+    - os_pam_fail_login_module == "pam_faillock.so"
+
+- name: req-044.6 configure line 3 for pam_faillock.so
+  pamd:
+    name: "{{ item }}"
+    type: "account"
+    control: "required"
+    module_path: "pam_unix.so"
+    new_type: "account"
+    new_control: "{{ os_pam_fail_login_control }}"
+    new_module_path: "{{ os_pam_fail_login_module }}"
+    state: before
+  with_items:
+    - "{{ os_pam_fail_login_files }}"
+  when: 
+    - config_req_44
+    - os_pam_fail_login_module == "pam_faillock.so"
+
+# Req-45: If PAM is used , PAM must be configured that motd did not contain 
+#         any sensitive data.
+
+- name: req-045.1 set motd without any sensitive info
+  template:
+    src: "motd.j2"
+    dest: "/etc/motd"
+    owner: root
+    group: root
+    mode: 0644
+  when: config_req_45
+
+- name: req-045.2 check for and comment out if found pam_motd.so for PAM
+  replace:
+    dest: '/etc/pam.d/{{ item }}'
+    regexp: '^session\ +optional\ +pam_motd.so*'
+    replace: '#session  optional  pam_motd.so'
+  with_items: "{{ files_motd }}"
+  notify: restart sshd
+  when: config_req_45

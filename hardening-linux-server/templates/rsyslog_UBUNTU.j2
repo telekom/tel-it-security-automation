@@ -1,0 +1,98 @@
+# tel-it-security-automation :- Ansible roles for automated security hardening.  
+# Copyright (c) 2019 Markus Schumburg, [...] Deutsche Telekom AG 
+# contact: devsecops@telekom.de 
+# This file is distributed under the conditions of the Apache-2.0 license. 
+# For details see the files LICENSING, LICENSE, and/or COPYING on the toplevel.
+
+# ========================================================================
+# Deutsch Telekom IT - DevSecOps Team
+# Security Hardening & Compliance Checks
+# ------------------------------------------------------------------------
+# File generated during automated hardening with Ansible
+# ========================================================================
+#
+#                       For more information see rsyslog.conf(5) and /etc/rsyslog.conf
+
+#
+# First some standard log files.  Log by facility.
+#
+auth,authpriv.*                 /var/log/auth.log
+*.*;auth,authpriv.none          -/var/log/syslog
+cron.*                          /var/log/cron.log
+#daemon.*                       -/var/log/daemon.log
+kern.*                          -/var/log/kern.log
+#lpr.*                          -/var/log/lpr.log
+mail.*                          -/var/log/mail.log
+#user.*                         -/var/log/user.log
+
+#
+# Logging for the mail system.  Split it up so that
+# it is easy to write scripts to parse these files.
+#
+#mail.info                      -/var/log/mail.info
+#mail.warn                      -/var/log/mail.warn
+mail.err                        /var/log/mail.err
+
+#
+# Logging for INN news system.
+#
+news.crit                       /var/log/news/news.crit
+news.err                        /var/log/news/news.err
+news.notice                     -/var/log/news/news.notice
+
+#
+# Some "catch-all" log files.
+#
+#*.=debug;\
+#       auth,authpriv.none;\
+#       news.none;mail.none     -/var/log/debug
+#*.=info;*.=notice;*.=warn;\
+#       auth,authpriv.none;\
+#       cron,daemon.none;\
+#       mail,news.none          -/var/log/messages
+
+#
+# Emergencies are sent to everybody logged in.
+#
+*.emerg                                :omusrmsg:*
+
+#
+# I like to have messages displayed on the console, but only on a virtual
+# console I usually leave idle.
+#
+#daemon,mail.*;\
+#       news.=crit;news.=err;news.=notice;\
+#       *.=debug;*.=info;\
+#       *.=notice;*.=warn       /dev/tty8
+
+# The named pipe /dev/xconsole is for the `xconsole' utility.  To use it,
+# you must invoke `xconsole' with the `-file' option:
+#
+#    $ xconsole -file /dev/xconsole [...]
+#
+# NOTE: adjust the list below, or you'll go crazy if you have a reasonably
+#      busy site..
+#
+daemon.*;mail.*;\
+        news.err;\
+        *.=debug;*.=info;\
+        *.=notice;*.=warn       |/dev/xconsole
+
+# ### begin forwarding rule ###
+# ### CHANGE HERE WHEN NEEDED ###
+# The statement between the begin ... end define a SINGLE forwarding
+# rule. They belong together, do NOT split them. If you create multiple
+# forwarding rules, duplicate the whole block!
+# Remote Logging (we use TCP for reliable delivery)
+#
+# An on-disk queue is created for this action. If the remote host is
+# down, messages are spooled to disk and sent when it is up again.
+$PreserveFQDN on
+$ActionQueueFileName fwdRule1 # unique name prefix for spool files
+$ActionQueueMaxDiskSpace 1g   # 1gb space limit (use as much as possible)
+$ActionQueueSaveOnShutdown on # save messages to disk on shutdown
+$ActionQueueType LinkedList   # run asynchronously
+$ActionResumeRetryCount -1    # infinite retries if host is down
+# remote host is: name/ip:port, e.g. 192.168.0.1:514, port optional
+*.* @{% if syslog_protocol == 'tcp' %}@{% endif %}{{syslog_server}}:{{syslog_port}}
+# ### end of the forwarding rule ###

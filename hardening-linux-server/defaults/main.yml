@@ -1,0 +1,31 @@
+---
+# tel-it-security-automation :- Ansible roles for automated security hardening.  
+# Copyright (c) 2019 Markus Schumburg, [...] Deutsche Telekom AG 
+# contact: devsecops@telekom.de 
+# This file is distributed under the conditions of the Apache-2.0 license. 
+# For details see the files LICENSING, LICENSE, and/or COPYING on the toplevel.
+
+# ========================================================================
+# Deutsch Telekom IT - DevSecOps Team
+# ------------------------------------------------------------------------
+# Security Hardening & Compliance Checks
+# Linux OS for Servers (3.65)
+#
+# Default Vars
+# ========================================================================
+
+# = NOTE =================================================================
+#
+#   We don't use this file!
+#   -----------------------
+#   Default settings are in '/vars/var_linux_default_settings.yml'. 
+#   To use your own setting create a copy of this file and name it
+#   '/vars/var_linux_user_settings.yml'. Change than this new file 
+#   to set your own specific configuration. 
+#   
+#   But be aware that this can result in a system that is not 
+#   compliant system to regulations of Telekom Security!
+#
+# ========================================================================
+
+

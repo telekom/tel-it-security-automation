@@ -1,0 +1,63 @@
+# tel-it-security-automation :- Ansible roles for automated security hardening.  
+# Copyright (c) 2019 Markus Schumburg, [...] Deutsche Telekom AG 
+# contact: devsecops@telekom.de 
+# This file is distributed under the conditions of the Apache-2.0 license. 
+# For details see the files LICENSING, LICENSE, and/or COPYING on the toplevel.
+
+# ========================================================================
+# Deutsch Telekom IT - DevSecOps Team
+# Security Hardening & Compliance Checks
+# ------------------------------------------------------------------------
+# File generated during automated hardening with Ansible
+# ========================================================================
+
+# This file contains the auditctl rules that are loaded
+# whenever the audit daemon is started via the initscripts.
+# The rules are simply the parameters that would be passed
+# to auditctl.
+
+# First rule - delete all
+-D
+
+# Increase the buffers to survive stress events.
+# Make this bigger for busy systems
+-b 8192
+
+# System events
+{% if config_system_events %}
+{% for sys in system_events %}
+{{sys}}
+{% endfor %}
+{% for ossys in os_specific_system_events %}
+{{ossys}}
+{% endfor %}
+{% endif %}
+
+# Access and authentication events
+{% if config_access_events %}
+{% for acc in access_events %}
+{{acc}}
+{% endfor %}
+{% for osacc in os_specific_access_events %}
+{{osacc}}
+{% endfor %}
+{% endif %}
+
+# Account and group management events
+{% if config_account_group_mgmt_events %}
+{% for agm in account_group_mgmt_events %}
+{{agm}}
+{% endfor %}
+{% endif %}
+
+# Configuration change events
+{% if config_change_events %}
+{% for chg in change_events %}
+{{chg}}
+{% endfor %}
+{% for oschg in os_specific_change_events %}
+{{oschg}}
+{% endfor %}
+{% endif %}
+
+# Events for priviledged commands

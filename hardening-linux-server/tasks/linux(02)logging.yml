@@ -1,0 +1,238 @@
+---
+# tel-it-security-automation :- Ansible roles for automated security hardening.  
+# Copyright (c) 2019 Markus Schumburg, [...] Deutsche Telekom AG 
+# contact: devsecops@telekom.de 
+# This file is distributed under the conditions of the Apache-2.0 license. 
+# For details see the files LICENSING, LICENSE, and/or COPYING on the toplevel.
+
+# ========================================================================
+# Deutsch Telekom IT - DevSecOps Team
+# ------------------------------------------------------------------------
+# Security Hardening & Compliance Checks
+# Linux OS for Servers (3.65)
+#
+# Tasks: 02 Logging
+# ========================================================================
+
+# Req-28: Logging must be enabled in bootloader configuration.
+
+# - NOTE ------------------------------------------------------------------
+# Requirement is not implemented! 
+# -------------------------------------------------------------------------
+
+# Req-29: Log rotation for logfiles must be configured.
+
+- name: req-029.1 configure logrotate
+  template:
+    src: 'logrotate.j2'
+    dest: '/etc/logrotate.conf'
+    owner: root
+    group: root
+    mode: 0644
+  when: config_req_29
+
+# Req-30: System time must be synchronized against a reference time source.
+
+- name: req-030.1 change {{os_timesync_software}}.conf
+  template:
+    src: 'chrony-config.j2'
+    dest: '{{ os_timesync_config_file }}'
+    owner: root
+    group: root
+    mode: 0644
+  notify: restart chrony
+  when: config_req_30
+
+- name: req-030.2 change chronyd file for Chrony
+  lineinfile:
+    dest: '{{ os_timesync_chronyd_path }}'
+    regexp: '^{{ os_timesync_chronyd_conf }}=(.*)'
+    line: '{{ os_timesync_chronyd_conf }}="-u {{ os_timesync_chronyd_user }}"'
+  notify: restart chrony
+  when: 
+    - config_req_30 
+    - os_timesync_chronyd_user is defined
+
+- name: req-030.3 set time zone
+  command: timedatectl set-timezone {{ set_timezone }}
+  changed_when: false
+  when: 
+    - config_req_30 
+    - set_timezone|length > 0
+
+# Req-31: Auditd service must be used to log security relevant events.
+
+- name: req-031.1 install auditd
+  package:
+    name: '{{ os_audit_software }}'
+    state: present
+  when: config_req_31
+
+- name: req-031.2 configure max size for log rotate in auditd.conf
+  lineinfile:
+    path: '/etc/audit/auditd.conf'
+    regexp: '^max_log_file ='
+    line: 'max_log_file = {{ auditd_file_size }}'
+    state: present
+  when: config_req_31
+
+- name: req-031.3 configure num_logs for log rotate for auditd
+  lineinfile:
+    path: '/etc/audit/auditd.conf'
+    regexp: '^num_logs ='
+    line: 'num_logs = {{ auditd_num_logs }}'
+    state: present
+  notify: restart auditd
+  when: config_req_31
+
+- name: req-031.5 configure num_logs for logrotate for auditd
+  lineinfile:
+    path: '/etc/audit/auditd.conf'
+    regexp: '^max_log_file_action ='
+    line: 'max_log_file_action = {{ auditd_rotate_action }}'
+    state: present
+  notify: restart auditd
+  when: config_req_31
+
+# Req-32: System events must be logged.
+# Req-33: Access and Authentication events must be logged.
+# Req-34: Account and Group Management events must be logged.
+# Req-35: Configuration Change events must be logged.
+
+- name: set variable to enable auditd configuration
+  set_fact:
+    config_audit: true
+  when: ( config_req_32 or config_req_33 ) or
+        ( config_req_34 or config_req_35 )
+
+- name: set variable to disable auditd configuration
+  set_fact:
+    config_audit: false
+  when: 
+    - not config_req_32
+    - not config_req_33
+    - not config_req_34
+    - not config_req_35
+
+- name: req-032-35.1 configure logging events
+  template:
+    src: 'audit-rules.j2'
+    dest: "{{ os_audit_rules_file }}"
+    owner: root
+    group: root
+    mode: 0640
+  notify: restart auditd
+  when: 
+    - config_audit
+    - not ansible_check_mode
+       
+- name: req-033.2 search for privileged commands
+  shell: df --local -P | awk {'if (NR!=1) print $6'} | xargs -I '{}' find '{}' -xdev -type f \( -perm -4000 -o -perm -2000 \) -print 2>/dev/null
+  register: priv_commands
+  changed_when: false
+  check_mode: no
+  when: 
+    - config_req_33
+
+- name: req-033.3 configure logging for priviledged commands
+  lineinfile:
+    path: "{{ os_audit_rules_file }}"
+    line: '-a always,exit -F path={{ item }} -F perm=x -F auid>=1000 -F auid!=4294967295 -k privileged'
+    state: present
+  with_items: '{{ priv_commands.stdout_lines }}'
+  notify: restart auditd
+  when: 
+    - config_req_33
+    - not ansible_check_mode
+
+- name: req-033.4 check logging of events with auditd
+  lineinfile:
+    path: "{{ os_audit_rules_file }}"
+    line: "{{ item }}"
+    state: present
+  register: check_auditd_events
+  changed_when: check_auditd_events.changed
+  with_items:
+    - "{{ system_events }}"
+    - "{{ os_specific_system_events }}"
+    - "{{ access_events }}"
+    - "{{ os_specific_access_events }}"
+    - "{{ account_group_mgmt_events }}"
+    - "{{ change_events }}"
+    - "{{ os_specific_change_events }}"
+  when: 
+    - config_audit
+    - ansible_check_mode
+ 
+- name: req-035.3 check logging for priviledged commands
+  lineinfile:
+    path: "{{ os_audit_rules_file }}"
+    line: '-a always,exit -F path={{ item }} -F perm=x -F auid>=1000 -F auid!=4294967295 -k privileged'
+    state: present
+  with_items: '{{ priv_commands.stdout_lines }}'
+  register: check_priv_log
+  changed_when: check_priv_log.changed
+  when: 
+    - ansible_check_mode
+    - config_req_35
+
+# Req-36: Auditd configuration must be immutable.
+
+- name: req-036.1 make audit configuration immutable
+  lineinfile:
+    path: "{{ os_audit_rules_file }}"
+    line: '-e 2'
+    state: present
+  when: config_req_36
+
+# Req-37: Security relevant logging data must be send to an external system 
+#         direct after their creation.
+- name: req-037.1 check if the rsyslog is installed
+  package:
+    name: "{{ syslog_type }}"
+    state: present
+  when: 
+    - config_req_37
+    - syslog_type == "rsyslog"
+
+# Req-38: If RSyslog is used, the default permission of 640 or more 
+#         restrictive for logfiles must be configured.
+# Req-39: If RSyslog is used, at least one central logging server must be 
+#         configured.
+
+- name: req-039.1 configure rsyslog to send logs to external system
+  template:
+    src: '{{os_rsyslog_template}}'
+    dest: '{{os_rsyslog_conf}}'
+    owner: root
+    group: root
+    mode: 0640
+  notify: restart rsyslog
+  when: 
+    - config_req_37
+    - config_req_38
+    - syslog_type == "rsyslog"
+
+# Next task is only necessary for Ubuntu 16.04 as it has a depricated 
+# configuration parameter set in rsyslog configuration.
+- name: req-039.2 delete not needed line (Ubuntu 16.04)
+  lineinfile:
+    path: "/etc/rsyslog.conf"
+    line: "$KLogPermitNonKernelFacility on"
+    state: absent
+  when: ansible_distribution_version == "16.04" and
+      ( config_req_39 and syslog_type == "rsyslog" )
+
+# Req-40: If Syslog-NG is used, the default permission of 640 or more 
+#         restrictive for logfiles must be configured.
+
+# - NOTE ------------------------------------------------------------------
+# Requirement is not implemented! 
+# -------------------------------------------------------------------------
+
+# Req-41: If Syslog-NG is used, at least one central logging server must 
+#         be configured.
+
+# - NOTE ------------------------------------------------------------------
+# Requirement is not implemented! 
+# -------------------------------------------------------------------------

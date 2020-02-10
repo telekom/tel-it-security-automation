@@ -1,0 +1,180 @@
+---
+# tel-it-security-automation :- Ansible roles for automated security hardening.  
+# Copyright (c) 2019 Markus Schumburg, [...] Deutsche Telekom AG 
+# contact: devsecops@telekom.de 
+# This file is distributed under the conditions of the Apache-2.0 license. 
+# For details see the files LICENSING, LICENSE, and/or COPYING on the toplevel.
+
+# ========================================================================
+# Deutsch Telekom IT - DevSecOps Team
+# ------------------------------------------------------------------------
+# Security Hardening & Compliance Checks
+# Linux OS for Servers (3.65)
+#
+# Tasks: 04 IPTables
+# ========================================================================
+
+- name: set variable to enable IPTables configuration
+  set_fact:
+    config_iptables: true
+  when: 
+    - config_req_02
+    - ansible_os_family != "Suse"
+
+# Dirty hack to diable IPTables for Suse as the SuseFirewall2 solution 
+# needs some further investigation!
+
+- name: set variable to disable IPTables configuration
+  set_fact:
+    config_iptables: false
+  when: not config_req_02 or ansible_os_family == "Suse"
+
+# Start IPTables on RedHat based systems and configure iptables-config file.
+
+- name: make iptables rules persistent
+  template:
+    src: "iptables-config.j2"
+    dest: "/etc/sysconfig/iptables-config"
+    owner: root
+    group: root
+    mode: 0600
+  when: 
+    - config_iptables
+    - os_iptables_persistant == ""
+
+- name: enable iptables service
+  systemd:
+    name: "iptables.service"
+    state: started
+    enabled: yes
+  when: 
+    - config_iptables
+    - os_iptables_persistant == ""
+    - not ansible_check_mode
+
+# Req-46: If iptables is used, policies for loopback traffic must be 
+#         configured.
+
+- name: req-046.1 iptables configure loopback traffic input rule
+  iptables:
+    chain: INPUT
+    in_interface: lo
+    jump: ACCEPT
+  when: 
+    - config_req_46
+    - config_iptables
+
+- name: req-046.2 iptables configure loopback traffic output rule
+  iptables:
+    chain: OUTPUT
+    out_interface: lo
+    jump: ACCEPT
+  when:
+    - config_req_46
+    - config_iptables
+
+- name: req-046.3 iptables configure loopback traffic drop rule
+  iptables:
+    chain: INPUT
+    source: 127.0.0.0/8
+    jump: DROP
+  when:
+    - config_req_46
+    - config_iptables
+
+# Req-47: If iptables is used, policies for outbound and established 
+#         connections must be configured.
+
+- name: req-047.1 configure outbound connections
+  iptables:
+    chain: OUTPUT
+    protocol: '{{ item }}'
+    match: state
+    ctstate: NEW,ESTABLISHED
+    jump: ACCEPT
+  with_items:
+    - "{{ iptables_protocols }}"
+  when:
+    - config_req_47
+    - config_iptables
+
+- name: req-047.2 configure inbound connections
+  iptables:
+    chain: INPUT
+    protocol: '{{ item }}'
+    match: state
+    ctstate: ESTABLISHED
+    jump: ACCEPT
+  with_items:
+    - "{{ iptables_protocols }}"
+  when:
+    - config_req_47
+    - config_iptables
+
+# Req-48: If iptables is used, policies must exist for all ports in 
+#         listening state.
+
+- name: req-048.1 configure rules for tcp
+  iptables:
+    chain: INPUT
+    protocol: tcp
+    destination_port: "{{ item }}"
+    match: state
+    ctstate: NEW
+    jump: ACCEPT
+  with_items: "{{ tcp_services }}"
+  when:
+    - config_req_48
+    - config_iptables
+    - tcp_services|length > 0
+
+- name: req-048.2 configure rules for udp
+  iptables:
+    chain: INPUT
+    protocol: udp
+    destination_port: "{{ item }}"
+    match: state
+    ctstate: NEW
+    jump: ACCEPT
+  with_items: "{{ udp_services }}"
+  when: 
+    - config_req_48
+    - config_iptables
+    - udp_services|length > 0
+
+- name: req-048.3 configure rules for icmp (ping)
+  iptables:
+    chain: INPUT
+    protocol: icmp
+    icmp_type: "8"
+    match: state
+    ctstate: NEW,ESTABLISHED,RELATED
+    jump: ACCEPT
+  when: 
+    - config_req_48
+    - config_iptables
+
+# Req-49: If iptables is used, the default policy must be configured to 
+#         drop all traffic.
+- name: req-049.1 configure default deny policies
+  iptables:
+    chain: '{{ item }}'
+    policy: DROP
+  with_items:
+    - 'INPUT'
+    - 'OUTPUT'
+    - 'FORWARD'
+  when: 
+    - config_req_49
+    - config_iptables   
+
+# IPTables rules must be written to config file
+
+- name: make iptables rules persistent
+  shell: "iptables-save > {{ os_iptables_persistant }}"
+  changed_when: false
+  when: 
+    - config_iptables
+    - os_iptables_persistant != ""
+    - not ansible_check_mode
+

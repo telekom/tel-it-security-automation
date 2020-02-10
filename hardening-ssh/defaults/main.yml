@@ -1,0 +1,57 @@
+---
+# tel-it-security-automation :- Ansible roles for automated security hardening.  
+# Copyright (c) 2019 Markus Schumburg, [...] Deutsche Telekom AG 
+# contact: devsecops@telekom.de 
+# This file is distributed under the conditions of the Apache-2.0 license. 
+# For details see the files LICENSING, LICENSE, and/or COPYING on the toplevel.
+
+# ========================================================================
+# Deutsch Telekom IT - DevSecOps Team
+# ------------------------------------------------------------------------
+# Security Hardening & Compliance Checks
+# Secure Shell (3.04)
+#
+# Default Vars
+# ========================================================================
+
+# Set to enable (true) or disable (false) SSH daemon on the system.
+# Not used in this version!
+# config_ssh_server: true 
+
+# TCP Port(s) to use with SSH. 
+ssh_server_ports:
+  - 22
+  # -  you can define more if needed.
+
+# Enable if IPv6 should be used:
+config_ipv6_enable: false
+
+# Enable (true) if a dedicated IPv4 management interface is used.
+config_mgmt_interface_ipv4: false
+# Define IPv4 address for mgmt interface.
+mgmt_interface_ipv4: "0.0.0.0"
+# Enable if (true) a dedicated IPv6 management interface is used.
+config_mgmt_interface_ipv6: false
+# Define IPv6 address for mgmt interface.
+mgmt_interface_ipv6: "::"
+
+# -- IMPORTANT ------------------------------------------------------------
+#
+# The playbook disables all SSH access without public-key. A user with
+# public key must and root privileges must exist on the system.
+#
+#       Otherwise, remote login with SSH is not longer possible!
+#
+# ------------------------------------------------------------------------
+
+# Set the following parameters to generate a user with root privileges, public
+# key authentication and permission to login via SSH.
+
+config_new_user: false
+# Set user name and password.
+user_name: ""
+# Set path to public-key file (e.g. id_rsa.pub).
+# Place file in folder 'files' or configure own path to your private key.
+public_key_file: "{{ role_path }}/files/id_rsa.pub"
+# Change if other group is used for sudo.
+group_sudo: sudo
