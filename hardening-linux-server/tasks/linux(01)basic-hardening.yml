@@ -274,6 +274,7 @@
     - "{{ partitions_security_nodev }}"
   when: 
     - config_req_05
+    - not env_is_chroot
     - fstab_file.stdout.find('{{ item.point.split("/")[1] }}') == -1 
 
 # Req-6: Automounting must be disabled.
