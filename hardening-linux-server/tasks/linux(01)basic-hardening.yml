@@ -264,6 +264,7 @@
     - "{{ partitions_security_nodev }}"
   when: 
     - config_req_05
+    - not env_is_chroot
     - fstab_file.stdout.find('{{ item.point.split("/")[1] }}') == -1
 
 - name: req-005.3 remount mounted FS to be sure they have needed options
