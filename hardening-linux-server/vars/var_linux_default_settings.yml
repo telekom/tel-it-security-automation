@@ -28,6 +28,9 @@
 # Set this var to 'true' if you run hardening in an chroot env.
 env_is_chroot: false
 
+# Set this var to 'true' if you run in an unprivileged docker container
+env_is_unpriv_container: false
+
 # Req-1: Unused services and protocols must be deactivated.
 config_req_01: true
 
