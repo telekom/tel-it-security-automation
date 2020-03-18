@@ -58,6 +58,16 @@
   changed_when: false
   when: 
     - config_req_30 
+    - not env_is_unpriv_container 
+    - set_timezone|length > 0
+
+- name: req-030.4 set time zone
+  shell: if [[ "$(readlink /etc/localtime)" != /usr/share/zoneinfo/"{{ set_timezone }}" ]]; then ln -sf /usr/share/zoneinfo/"{{ set_timezone }}" /etc/localtime  ; fi
+  register: set_time_docker
+  changed_when: false
+  when: 
+    - config_req_30 
+    - env_is_unpriv_container
     - set_timezone|length > 0
 
 # Req-31: Auditd service must be used to log security relevant events.
