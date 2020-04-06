@@ -40,7 +40,19 @@
     mode: 0600
   when: 
     - config_iptables
-    - os_iptables_persistant == ""
+    - ( os_iptables_persistant == "" or env_is_chroot )
+
+- name: make iptables rules persistent in chroot
+  template:
+    src: "iptables-config.j2"
+    dest: "/etc/sysconfig/iptables-config"
+    owner: root
+    group: root
+    mode: 0600
+  when: 
+    - config_iptables
+    - os_iptables_persistant != ""
+    - env_is_chroot
 
 - name: enable iptables service
   systemd:
@@ -50,6 +62,17 @@
   when: 
     - config_iptables
     - os_iptables_persistant == ""
+    - not ansible_check_mode
+
+- name: enable iptables service in chroot
+  systemd:
+    name: "iptables.service"
+    enabled: yes
+    masked: no
+  when: 
+    - config_iptables
+    - os_iptables_persistant != ""
+    - env_is_chroot
     - not ansible_check_mode
 
 # Req-46: If iptables is used, policies for loopback traffic must be 
@@ -63,6 +86,20 @@
   when: 
     - config_req_46
     - config_iptables
+    - not env_is_chroot
+
+- name: req-046.1 iptables configure loopback traffic input rule (in chroot)
+  lineinfile:
+    path: "{{ os_iptables_persistant }}"
+    line: '-A INPUT -i lo -j ACCEPT'
+    insertbefore: '^COMMIT'
+    state: present
+  when:
+    - config_req_46
+    - config_iptables
+    - env_is_chroot
+    - os_iptables_persistant != ""
+    - not ansible_check_mode
 
 - name: req-046.2 iptables configure loopback traffic output rule
   iptables:
@@ -72,6 +109,20 @@
   when:
     - config_req_46
     - config_iptables
+    - not env_is_chroot
+
+- name: req-046.2 iptables configure loopback traffic output rule (in chroot)
+  lineinfile:
+    path: "{{ os_iptables_persistant }}"
+    line: '-A OUTPUT -o lo -j ACCEPT'
+    insertbefore: '^COMMIT'
+    state: present
+  when:
+    - config_req_46
+    - config_iptables
+    - env_is_chroot
+    - os_iptables_persistant != ""
+    - not ansible_check_mode
 
 - name: req-046.3 iptables configure loopback traffic drop rule
   iptables:
@@ -81,6 +132,20 @@
   when:
     - config_req_46
     - config_iptables
+    - not env_is_chroot
+
+- name: req-046.3 iptables configure loopback traffic drop rule (in chroot)
+  lineinfile:
+    path: "{{ os_iptables_persistant }}"
+    line: '-A INPUT -s 127.0.0.0/8 -j DROP'
+    insertbefore: '^COMMIT'
+    state: present
+  when:
+    - config_req_46
+    - config_iptables
+    - env_is_chroot
+    - os_iptables_persistant != ""
+    - not ansible_check_mode
 
 # Req-47: If iptables is used, policies for outbound and established 
 #         connections must be configured.
@@ -97,6 +162,21 @@
   when:
     - config_req_47
     - config_iptables
+    - not env_is_chroot
+
+- name: req-047.1 configure outbound connections (in chroot)
+  lineinfile:
+    path: "{{ os_iptables_persistant }}"
+    line: '-A OUTPUT -p {{ item }} -m state --state NEW,ESTABLISHED -j ACCEPT'
+    insertbefore: '^COMMIT'
+    state: present
+  with_items: '{{ iptables_protocols }}'
+  when:
+    - config_req_47
+    - config_iptables
+    - env_is_chroot
+    - os_iptables_persistant != ""
+    - not ansible_check_mode
 
 - name: req-047.2 configure inbound connections
   iptables:
@@ -110,6 +190,21 @@
   when:
     - config_req_47
     - config_iptables
+    - not env_is_chroot
+
+- name: req-047.2 configure inbound connections (in chroot)
+  lineinfile:
+    path: "{{ os_iptables_persistant }}"
+    line: '-A INPUT -p {{ item }} -m state --state ESTABLISHED -j ACCEPT'
+    insertbefore: '^COMMIT'
+    state: present
+  with_items: '{{ iptables_protocols }}'
+  when:
+    - config_req_47
+    - config_iptables
+    - env_is_chroot
+    - os_iptables_persistant != ""
+    - not ansible_check_mode
 
 # Req-48: If iptables is used, policies must exist for all ports in 
 #         listening state.
@@ -127,6 +222,22 @@
     - config_req_48
     - config_iptables
     - tcp_services|length > 0
+    - not env_is_chroot
+
+- name: req-048.1 configure rules for tcp (in chroot)
+  lineinfile:
+    path: "{{ os_iptables_persistant }}"
+    line: '-A INPUT -p tcp --dport {{ item }} -m state --state NEW -j ACCEPT'
+    insertbefore: '^COMMIT'
+    state: present
+  with_items: '{{ tcp_services }}'
+  when:
+    - config_req_48
+    - config_iptables
+    - tcp_services|length > 0
+    - env_is_chroot
+    - os_iptables_persistant != ""
+    - not ansible_check_mode
 
 - name: req-048.2 configure rules for udp
   iptables:
@@ -141,6 +252,22 @@
     - config_req_48
     - config_iptables
     - udp_services|length > 0
+    - not env_is_chroot
+
+- name: req-048.2 configure rules for udp (in chroot)
+  lineinfile:
+    path: "{{ os_iptables_persistant }}"
+    line: '-A INPUT -p udp --dport {{ item }} -m state --state NEW -j ACCEPT'
+    insertbefore: '^COMMIT'
+    state: present
+  with_items: '{{ tcp_services }}'
+  when:
+    - config_req_48
+    - config_iptables
+    - udp_services|length > 0
+    - env_is_chroot
+    - os_iptables_persistant != ""
+    - not ansible_check_mode
 
 - name: req-048.3 configure rules for icmp (ping)
   iptables:
@@ -153,6 +280,20 @@
   when: 
     - config_req_48
     - config_iptables
+    - not env_is_chroot
+
+- name: req-048.3 configure rules for icmp (ping) (in chroot)
+  lineinfile:
+    path: "{{ os_iptables_persistant }}"
+    line: '-A INPUT -p icmp -m state --state NEW,RELATED,ESTABLISHED -m icmp --icmp-type 8 -j ACCEPT'
+    insertbefore: '^COMMIT'
+    state: present
+  when:
+    - config_req_48
+    - config_iptables
+    - env_is_chroot
+    - os_iptables_persistant != ""
+    - not ansible_check_mode
 
 # Req-49: If iptables is used, the default policy must be configured to 
 #         drop all traffic.
@@ -166,7 +307,25 @@
     - 'FORWARD'
   when: 
     - config_req_49
-    - config_iptables   
+    - config_iptables
+    - not env_is_chroot
+
+- name: req-049.1 configure default deny policies (in chroot)
+  lineinfile:
+    path: "{{ os_iptables_persistant }}"
+    line: '-P {{ item }} DROP'
+    state: present
+    insertbefore: '^COMMIT'
+  with_items:
+    - 'INPUT'
+    - 'OUTPUT'
+    - 'FORWARD'
+  when:
+    - config_req_48
+    - config_iptables
+    - env_is_chroot
+    - os_iptables_persistant != ""
+    - not ansible_check_mode
 
 # IPTables rules must be written to config file
 
@@ -176,5 +335,6 @@
   when: 
     - config_iptables
     - os_iptables_persistant != ""
+    - not env_is_chroot
     - not ansible_check_mode
 
