@@ -1,6 +1,6 @@
 ---
 # tel-it-security-automation :- Ansible roles for automated security hardening.  
-# Copyright (c) 2019 Markus Schumburg, [...] Deutsche Telekom AG 
+# Copyright (c) 2020 Maximilian Hertstein [...] Deutsche Telekom AG 
 # contact: devsecops@telekom.de 
 # This file is distributed under the conditions of the Apache-2.0 license. 
 # For details see the files LICENSING, LICENSE, and/or COPYING on the toplevel.
@@ -14,43 +14,108 @@
 # Tasks: 04 IPTables
 # ========================================================================
 
-- name: set variable to enable IPTables configuration
-  set_fact:
-    config_iptables: true
-  when: 
-    - config_req_02
-    - ansible_os_family != "Suse"
-
-# Dirty hack to diable IPTables for Suse as the SuseFirewall2 solution 
-# needs some further investigation!
+# Disable IPTables for Suse Linux 12 as they messed up iptables with 
+# SuSEFirewall2 tool!
 
 - name: set variable to disable IPTables configuration
   set_fact:
     config_iptables: false
-  when: not config_req_02 or ansible_os_family == "Suse"
+  when: not config_req_02 | default(true)
+
+- name: check if ipv6 is enabled and set list of ip version
+  set_fact:
+    ip_version: [ "ipv4", "{{ 'ipv6' if ansible_all_ipv6_addresses is defined else '' }}" ]
 
 # Start IPTables on RedHat based systems and configure iptables-config file.
 
-- name: make iptables rules persistent
-  template:
-    src: "iptables-config.j2"
-    dest: "/etc/sysconfig/iptables-config"
+- name: install tools to make iptables persistent
+  package:
+    name: '{{ os_iptables_tools }}'
+    state: present
+  when: 
+    - config_iptables | default(true)
+    - os_iptables_tools | length > 0
+
+- name: create services to reload {{ item }} rules on boot (Suse)
+  blockinfile:
+    path: /etc/systemd/system/{{ item }}-restore.service
+    block: |
+      [Unit]
+      Description=Load {{ item }} rules on boot
+
+      [Service]
+      Type=oneshot
+      ExecStart=/bin/sh -c "{{ item }}-restore {{ '-w 60' if ansible_distribution_major_version == "15" else '' }} < /etc/{{ item }}.rules"
+
+      [Install]
+      WantedBy=multi-user.target
+    create: yes
     owner: root
     group: root
-    mode: 0600
-  when: 
-    - config_iptables
-    - os_iptables_persistant == ""
+    mode: '644'
+  with_items:
+    - "iptables"
+    - "{{ 'ip6tables' if ansible_all_ipv6_addresses is defined else '' }}"
+  when:
+    - item != '' 
+    - config_iptables | default(true)
+    - ansible_os_family == "Suse"
 
-- name: enable iptables service
-  systemd:
-    name: "iptables.service"
-    state: started
-    enabled: yes
+- name: uninstall firewalld/nftables to avoid conflicts
+  package:
+    name: "{{ item }}"
+    state: absent
+  with_items: 
+    - "firewalld"
+    - "nftables"
   when: 
-    - config_iptables
-    - os_iptables_persistant == ""
-    - not ansible_check_mode
+    - config_iptables | default(true)
+
+- name: make iptables ipv4 rules persistent (RedHat)
+  lineinfile:
+    path: '/etc/sysconfig/iptables-config'
+    regexp: '^({{ item }})=.*$'
+    line: '\1="yes"'
+    backrefs: yes
+  with_items: 
+    - "IPTABLES_SAVE_ON_STOP"
+    - "IPTABLES_SAVE_ON_RESTART"
+  when: 
+    - config_iptables | default(true)
+    - ansible_os_family == "RedHat"
+    
+- name: make iptables ipv6 rules persistent (RedHat)
+  lineinfile:
+    path: '/etc/sysconfig/ip6tables-config'
+    regexp: '^({{ item }})=.*$'
+    line: '\1="yes"'
+    backrefs: yes
+  with_items: 
+    - "IP6TABLES_SAVE_ON_STOP"
+    - "IP6TABLES_SAVE_ON_RESTART"
+  when: 
+    - config_iptables | default(true)
+    - ansible_os_family == "RedHat"
+    - ansible_all_ipv6_addresses is defined
+
+- name: enable iptables service for ipv4 (RedHat)
+  systemd:
+    name: "{{ os_iptables_service }}"
+    state: "{{ enable_iptables | ternary('started','stopped') }}"
+    enabled: "{{ enable_iptables }}"
+  when: 
+    - config_iptables | default(true)
+    - ansible_os_family == "RedHat"
+
+- name: enable iptables service for ipv6 (RedHat)
+  systemd:
+    name: "{{ os_ip6tables_service }}"
+    state: "{{ enable_iptables | ternary('started','stopped') }}"
+    enabled: "{{ enable_iptables }}"
+  when: 
+    - config_iptables | default(true)
+    - ansible_all_ipv6_addresses is defined
+    - ansible_os_family == "RedHat"
 
 # Req-46: If iptables is used, policies for loopback traffic must be 
 #         configured.
@@ -60,27 +125,40 @@
     chain: INPUT
     in_interface: lo
     jump: ACCEPT
-  when: 
-    - config_req_46
-    - config_iptables
+    ip_version: "{{ item }}"  
+  with_items:
+    - "{{ ip_version }}"
+  when:
+    - item != '' 
+    - config_req_46 | default(true)
+    - config_iptables | default(true)
 
 - name: req-046.2 iptables configure loopback traffic output rule
   iptables:
     chain: OUTPUT
     out_interface: lo
     jump: ACCEPT
+    ip_version: "{{ item }}"  
+  with_items:
+    - "{{ ip_version }}"
   when:
-    - config_req_46
-    - config_iptables
+    - item != '' 
+    - config_req_46 | default(true)
+    - config_iptables | default(true)
 
 - name: req-046.3 iptables configure loopback traffic drop rule
   iptables:
     chain: INPUT
-    source: 127.0.0.0/8
+    source: "{{ item.source }}"
     jump: DROP
-  when:
-    - config_req_46
-    - config_iptables
+    ip_version: "{{ item.ip_ver }}"
+  with_items:
+    - { ip_ver: ipv4, source: "127.0.0.0/8" }
+    - { ip_ver: "{{ 'ipv6' if ansible_all_ipv6_addresses is defined else '' }}", source: "::1" }
+  when: 
+    - item.ip_ver != '' 
+    - config_req_46 | default(true)
+    - config_iptables | default(true)
 
 # Req-47: If iptables is used, policies for outbound and established 
 #         connections must be configured.
@@ -88,28 +166,34 @@
 - name: req-047.1 configure outbound connections
   iptables:
     chain: OUTPUT
-    protocol: '{{ item }}'
+    protocol: '{{ item[1] }}'
     match: state
     ctstate: NEW,ESTABLISHED
     jump: ACCEPT
-  with_items:
+    ip_version: "{{ item[0] }}"
+  with_nested:
+    - "{{ ip_version }}"
     - "{{ iptables_protocols }}"
   when:
-    - config_req_47
-    - config_iptables
+    - item[0] != '' 
+    - config_req_47 | default(true)
+    - config_iptables | default(true)
 
 - name: req-047.2 configure inbound connections
   iptables:
     chain: INPUT
-    protocol: '{{ item }}'
+    protocol: '{{ item[1] }}'
     match: state
     ctstate: ESTABLISHED
     jump: ACCEPT
-  with_items:
+    ip_version: "{{ item[0] }}"
+  with_nested:
+    - "{{ ip_version }}"
     - "{{ iptables_protocols }}"
   when:
-    - config_req_47
-    - config_iptables
+    - item[0] != ''
+    - config_req_47 | default(true)
+    - config_iptables | default(true)
 
 # Req-48: If iptables is used, policies must exist for all ports in 
 #         listening state.
@@ -117,64 +201,116 @@
 - name: req-048.1 configure rules for tcp
   iptables:
     chain: INPUT
-    protocol: tcp
-    destination_port: "{{ item }}"
+    protocol: "tcp"
+    destination_port: "{{ item[1] }}"
     match: state
     ctstate: NEW
     jump: ACCEPT
-  with_items: "{{ tcp_services }}"
+    ip_version: "{{ item[0] }}"
+  with_nested:
+    - "{{ ip_version }}"
+    - "{{ set_tcp_services }}"
   when:
-    - config_req_48
-    - config_iptables
-    - tcp_services|length > 0
+    - item[0] != ''
+    - config_req_48 | default(true)
+    - config_iptables | default(true)
+    - set_tcp_services | length > 0
 
 - name: req-048.2 configure rules for udp
   iptables:
     chain: INPUT
-    protocol: udp
-    destination_port: "{{ item }}"
+    protocol: "udp"
+    destination_port: "{{ item[1] }}"
     match: state
     ctstate: NEW
     jump: ACCEPT
-  with_items: "{{ udp_services }}"
-  when: 
-    - config_req_48
-    - config_iptables
-    - udp_services|length > 0
+    ip_version: "{{ item[0] }}"
+  with_nested:
+    - "{{ ip_version }}"
+    - "{{ set_udp_services }}"
+  when:
+    - item[0] != ''
+    - config_req_48 | default(true)
+    - config_iptables | default(true)
+    - set_udp_services | length > 0
 
 - name: req-048.3 configure rules for icmp (ping)
   iptables:
     chain: INPUT
-    protocol: icmp
-    icmp_type: "8"
+    protocol: "{{ item.protocol }}"
+    icmp_type: "{{ item.type }}"
     match: state
     ctstate: NEW,ESTABLISHED,RELATED
     jump: ACCEPT
+    ip_version: "{{ item.ip_ver }}"
+  with_items:
+    - { ip_ver: ipv4, protocol: "icmp", type: "8" }
+    - { ip_ver: "{{ 'ipv6' if ansible_all_ipv6_addresses is defined else '' }}", protocol: "icmpv6", type: "128" }
   when: 
-    - config_req_48
-    - config_iptables
+    - item.ip_ver != '' 
+    - config_req_48 | default(true)
+    - config_iptables | default(true)
 
-# Req-49: If iptables is used, the default policy must be configured to 
-#         drop all traffic.
+# Req-49: If iptables is used, the default policy for tables INPUT and FORWARD
+#         must be configured to drop all traffic.
 - name: req-049.1 configure default deny policies
   iptables:
-    chain: '{{ item }}'
+    chain: '{{ item[1] }}'
     policy: DROP
-  with_items:
-    - 'INPUT'
-    - 'OUTPUT'
-    - 'FORWARD'
-  when: 
-    - config_req_49
-    - config_iptables   
+    ip_version: "{{ item[0] }}"
+  with_nested:
+    - "{{ ip_version }}"
+    - [ "INPUT", "OUTPUT", "FORWARD" ]
+  when:
+    - item[0] != ''
+    - config_req_49 | default(true)
+    - config_iptables | default(true) 
 
 # IPTables rules must be written to config file
 
-- name: make iptables rules persistent
-  shell: "iptables-save > {{ os_iptables_persistant }}"
+- name: make iptables rules persistent (Ubuntu)
+  shell: "iptables-save > {{ os_iptables_rules }}"
   changed_when: false
   when: 
-    - config_iptables
-    - os_iptables_persistant != ""
+    - config_iptables | default(true)
+    - ansible_os_family != "RedHat"
     - not ansible_check_mode
 
+- name: make ip6tables rules persistent (Ubuntu)
+  shell: "ip6tables-save > {{ os_ip6tables_rules }}"
+  changed_when: false
+  when: 
+    - config_iptables | default(true)
+    - ansible_os_family != "RedHat"
+    - not ansible_check_mode
+    - ansible_all_ipv6_addresses is defined
+
+- name: reload systemctl deamon (Suse)
+  shell: systemctl daemon-reload
+  failed_when: false
+  changed_when: false
+  when:
+    - config_iptables | default(true)
+    - ansible_os_family == "Suse"
+    - not ansible_check_mode
+
+- name: enable iptables service for ipv4 (Suse)
+  systemd:
+    name: "{{ os_iptables_service }}"
+    state: "{{ enable_iptables | ternary('started','stopped') }}"
+    enabled: "{{ enable_iptables }}"
+  when: 
+    - config_iptables | default(true)
+    - ansible_os_family == "Suse"
+    - not ansible_check_mode
+
+- name: enable iptables service for ipv6 (Suse)
+  systemd:
+    name: "{{ os_ip6tables_service }}"
+    state: "{{ enable_iptables | ternary('started','stopped') }}"
+    enabled: "{{ enable_iptables }}"
+  when: 
+    - config_iptables | default(true)
+    - ansible_os_family == "Suse"
+    - not ansible_check_mode
+    - ansible_all_ipv6_addresses is defined

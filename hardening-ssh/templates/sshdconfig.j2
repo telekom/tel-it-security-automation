@@ -6,63 +6,94 @@
 
 # See the sshd_config(5) manpage for details
 
-{% for port in ssh_server_ports -%}
+{% for port in config_server_ports -%}
 Port {{port}}
 {% endfor %}
 
 # Sets address family to 'inet' if IPv4 only is used or 'any' for IPv4 and 6.
-AddressFamily {{ 'any' if (config_ipv6_enable|bool) else 'inet' }}
+AddressFamily {{ 'any' if (enable_ipv6_protocol|bool) else 'inet' }}
 
 {% if config_mgmt_interface_ipv4 %}
 ListenAddress {{ mgmt_interface_ipv4 }}
 {% endif %}
 {% if config_mgmt_interface_ipv6 %}
+{% if enable_ipv6_protocol %}
 ListenAddress {{ mgmt_interface_ipv6 }}
 {% endif %}
+{% endif %}
 
+{% if config_ssh_protocol and os_config_ssh_version %}
 # Obsolet with OpenSSH version 7.4 and later
-{% if os_config_ssh_version %}
 Protocol {{ ssh_version }}
 {% endif %}
 
 # HostKeys for protocol version 2
 HostKey /etc/ssh/ssh_host_rsa_key
-HostKey /etc/ssh/ssh_host_dsa_key
 HostKey /etc/ssh/ssh_host_ecdsa_key
 HostKey /etc/ssh/ssh_host_ed25519_key
 
+{% if config_key_exchange %}
 # Key Exchange Algorithms
 KexAlgorithms {{ ssh_key_ex | join(',') }}
+{% endif %}
+{% if config_chiphers %}
 # Ciphers
 Ciphers {{ ssh_ciphers | join(',') }}
-
+{% endif %}
+{% if config_macs %}
+# MACs
 MACs {{ ssh_macs | join(',') }}
+{% endif %}
+{% if config_hostkey_algorithm %}
+# Host Key Algorithms
+HostKeyAlgorithms {{ ssh_hostkey_algorithm | join(',') }}
+{% endif %}
 
+{% if config_logging %}
 SyslogFacility {{ssh_syslogfacility}}
 LogLevel {{ssh_loglevel}}
-
+{% endif %}
+{% if config_login_grace_time %}
 LoginGraceTime {{login_grace_time}}
+{% endif %}
+{% if config_permit_root %}
 PermitRootLogin {{ 'without-password' if (allow_root_login|bool) else 'no' }}
+{% endif %}
+{% if config_strict_mode %}
 StrictModes {{ 'yes' if (strict_mode|bool) else 'no' }}
+{% endif %}
+{% if config_max_auth_tries %}
 MaxAuthTries {{max_auth_tries}}
 MaxSessions {{max_sessions}}
 MaxStartups {{max_startups}}
-
+{% endif %}
+{% if config_pubkey_auth %}
 PubkeyAuthentication {{ 'yes' if (pubkey_auth|bool) else 'no' }}
+{% endif %}
 
 AuthorizedKeysFile .ssh/authorized_keys
 
+{% if config_ignore_rhost %}
 IgnoreRhosts {{ 'yes' if (ignore_rhosts|bool) else 'no' }}
+{% endif %}
 
+
+{% if config_host_based_auth %}
 HostbasedAuthentication {{ 'yes' if (host_based_auth|bool) else 'no' }}
 IgnoreUserKnownHosts {{ 'yes' if (ignore_known_hosts|bool) else 'no' }}
+{% endif %}
 
+{% if config_empty_pass %}
 PermitEmptyPasswords {{ 'yes' if (permit_empty_pw|bool) else 'no' }}
+{% endif %}
+{% if config_pass_auth %}
 ChallengeResponseAuthentication {{ 'yes' if (challenge_response|bool) else 'no' }}
 PasswordAuthentication {{ 'yes' if (password_auth|bool) else 'no' }}
+{% endif %}
 
 UsePAM yes
 
+{% if config_user_groups %}
 {% if ssh_deny_users -%}
 DenyUsers "{{ssh_deny_users}}"
 {% endif %}
@@ -75,22 +106,41 @@ DenyGroups {{ssh_deny_groups}}
 {% if ssh_allow_groups -%}
 AllowGroups {{os_group_ssh}} {{ssh_allow_groups}}
 {% endif %}
+{% endif %}
 
+{% if config_agent_forwarding %}
 AllowAgentForwarding {{ 'yes' if (allow_agent_forwarding|bool) else 'no' }}
+{% endif %}
+{% if config_tcp_forwarding %}
 AllowTcpForwarding {{ 'yes' if (allow_tcp_forwarding|bool) else 'no' }}
+{% endif %}
+{% if config_gw_ports %}
 GatewayPorts {{ 'yes' if (gw_ports|bool) else 'no' }}
+{% endif %}
+{% if config_x11_forwarding %}
 X11Forwarding {{ 'yes' if (x11_forwarding|bool) else 'no' }}
+{% endif %}
 PrintMotd no
 PrintLastLog no
+{% if config_idle_timeout %}
 TCPKeepAlive {{ 'yes' if (tcp_keepalive|bool) else 'no' }}
+{% if (ssh_client_alive_interval|length > 0) %}
+ClientAliveInterval {{ssh_client_alive_interval}}
+{% endif %}
+{% if (ssh_client_alive_count|length > 0) %}
+ClientAliveCountMax {{ssh_client_alive_count}}
+{% endif %}
+{% endif %}
+{% if config_permit_user_env %}
 PermitUserEnvironment {{ 'yes' if (permit_user_env|bool) else 'no' }}
-ClientAliveInterval {{client_alive_interval}}
-ClientAliveCountMax {{client_alive_count}}
+{% endif %}
+{% if config_permit_tunnel %}
 PermitTunnel {{ 'yes' if (permit_tunnel|bool) else 'no' }}
+{% endif %}
 
 Banner none
 
-{% if set_sftp_enabled %}
+{% if config_sftp %}
 Subsystem sftp internal-sftp -l {{sftp_logging}}
 
 {% if set_sftp_chroot %}

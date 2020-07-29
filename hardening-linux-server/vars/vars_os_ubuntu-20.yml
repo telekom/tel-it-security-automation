@@ -11,7 +11,7 @@
 # Security Hardening & Compliance Checks
 # Linux OS for Servers (3.65)
 #
-# Vars for RedHat Enterprise Linux 7.x
+# Vars for Ubuntu 20.04
 # ========================================================================
 
 # =IMPORTANT==============================================================
@@ -21,103 +21,119 @@
 # ========================================================================
 
 # Req-1: Unused services and protocols must be deactivated.
-os_network_services: ""
+os_network_services:
+  - "rsync"
+  - "atd"
+  - "ufw"
+  - "unattended-upgrades"
+  - "iscsid.service"
+  - "open-iscsi.service"
 
 # Req 3: Unused software must not be installed or must be uninstalled.
 os_servers:
-  - "avahi"
-  - "telnet-server"
-  - "talk-server"
+  - "avahi-dnsconfd"
+  - "avahi-ui-utils"
   - "tftp-server"
+  - "tftpd-hpa"
+  - "inetutils-telnetd"
   - "rsh-server"
   - "yp-tools"
+  - "friendly-recovery"
+  - "iscsi.service"
   - "ntp"
+  - "rpcbind"
   
 os_clients:
-  - "rsh"
-  - "ypbind"
+  - "rsh-client"
+  - "inetutils-telnet"
   - "nftables"
+
+os_uninstall_snap: true
 
 # Req-4: Dedicated partitions must be used for growing content that can 
 #        influence the availability of the system.
-os_filesystem_type: "xfs"
-os_restorecon_command: true
+os_filesystem_type: "ext4"
+os_restorecon_command: false
 
 # Req-13: Core dumps must be disabled.
-os_disable_apport: false
+os_disable_apport: true
 
 # Req-18: GPG check for repository server must be activated and corresponding
 #         keys for trustable repositories must be configured.
-os_packet_manager_conf: "/etc/yum.conf"
-os_repo_files_dir: "/etc/yum.repos.d"
+os_packet_manager_conf: ""
+os_repo_files_dir: ""
 
 # Req-19: User accounts must be used that allow unambiguous identification 
 #         of the user.
 # Req-20: System accounts must be non-login.
 os_uid_default: 999
-os_nologin_path: /sbin/nologin
+os_nologin_path: /usr/sbin/nologin
 
 # Req-24: Authentication must be used for single user mode.
 # Is only neeed for Ubuntu 16.04/18.04 (-> true).
-os_config_root_password: false
+os_config_root_password: true
 
 # Req-28: Auditing must be enabled at boot by setting a kernel parameter.
-os_grub_config_file: "/boot/grub2/grub.cfg"
-os_grub_config_update: "grub2-mkconfig -o /boot/grub2/grub.cfg"
+os_grub_config_file: "/boot/grub/grub.cfg"
+os_grub_config_update: "update-grub"
+os_grub_disable_prober: true  # Only relevant for Ubuntu 20.04
 
 # Req-29: Log rotation for logfiles must be configured.
-os_su_root_syslog: false
+os_su_root_syslog: true
 
 # Req-30: System time must be synchronized against a reference time source.
 os_timesync_software: "chrony"
 os_timesync_daemon: "chronyd"
-os_timesync_config_file: "/etc/chrony.conf"
-os_timesync_chronyd_path: "/etc/sysconfig/chronyd"
-os_timesync_chronyd_conf: "OPTIONS"
-os_timesync_chronyd_user: "chrony"
+os_timesync_config_file: "/etc/chrony/chrony.conf"
+os_timesync_chronyd_path: "/etc/default/chrony"
+os_timesync_chronyd_conf: "DAEMON_OPTS"
+os_timesync_chronyd_user: "_chrony"
 
 # Req-31: Auditd service must be used to log security relevant events.
-os_audit_software: "audit"
+os_audit_software: "auditd"
 os_audit_deamon: "auditd"
 os_audit_rules_file: "/etc/audit/rules.d/audit.rules"
 
 # Req-32:	System events must be logged.
 os_specific_system_events:
   # (Un)Installation of software
-  - "-w /usr/bin/rpm -p x -k software_mgmt"
-  - "-w /usr/bin/yum -p x -k software_mgmt"
+  - "-w /usr/bin/dpkg -p x -k software_mgmt"
+  - "-w /usr/bin/apt-add-repository -p x -k software_mgmt"
+  - "-w /usr/bin/apt-get -p x -k software_mgmt"
+  - "-w /usr/bin/aptitude -p x -k software_mgmt"
 
 # Req-33:	Access and Authentication events must be logged.
 os_specific_access_events:
   # Logon and Logoff
-  - "-w /var/run/faillock/ -p wa -k logins"
-  # SELinux events
-  - "-w /etc/selinux/ -p wa -k MAC-policy"
+  - "-w /var/log/faillog -p wa -k logins"
+  - "-w /var/log/tallylog -p wa -k logins"
+  # AppArmor events
+  - "-w /etc/apparmor/ -p wa -k MAC-policy"
+  - "-w /etc/apparmor.d/ -p wa -k MAC-policy"
 
 # Req-35:	Configuration Change events must be logged.
 os_specific_change_events:
   # Modification of logs
-  - "-w /var/log/messages"
+  - "-w /var/log/auth.log"
+  - "-w /var/log/system.log"
   # Network configuration change
-  - "-w /etc/sysconfig/network -p wa -k system-locale"
-  - "-w /etc/sysconfig/network-scripts/ -p wa -k system-locale"
+  - "-w /etc/network/interfaces -p wa -k system-locale"
 
-# Req-37: Security relevant logging data must be send to an external system 
+  # Req-37: Security relevant logging data must be send to an external system 
 #         direct after their creation.
-os_rsyslog_template: "rsyslog_RHEL7.j2"
-os_rsyslog_conf: "/etc/rsyslog.conf"
+os_rsyslog_template: "rsyslog_UBUNTU.j2"
+os_rsyslog_conf: "/etc/rsyslog.d/50-default.conf"
 
 # PAM parameters needed for Req-42 - 45
 os_pam_config_files:
-  - "/etc/pam.d/system-auth"
-  - "/etc/pam.d/password-auth"
+  -  "/etc/pam.d/common-password"
 
 # Req-42: If PAM is used, it needs to be reconfigured to use strong salted
 #         password hash functions while doing many calculation rounds to protect
 #         passwords.
 os_pam_hashing_files: "{{ os_pam_config_files }}"
 os_pam_hashing_type: "password"
-os_pam_hashing_control: "sufficient"
+os_pam_hashing_control: "[success=1 default=ignore]"
 os_pam_hashing_module: "pam_unix.so"
 os_pam_hashing_module_arg: 
   - "{{ encryption_method }}"
@@ -128,40 +144,47 @@ os_pam_hashing_module_arg:
 #         and a combination of three out of the following categories: upper
 #         cases, lower case, numbers and special characters.
 os_pam_password_length: "{{ pam_password_length }}"
-os_install_pam_pwmodules: false
-os_pam_pwmodules: ""
-os_use_pam_pwquality_conf: true
+os_install_pam_pwmodules: true
+os_pam_pwmodules:
+  - "libpam-pwquality"
+  - "cracklib-runtime"
+os_use_pam_pwquality_conf: false
 os_pam_complexity_files: "{{ os_pam_config_files }}"
-os_pam_complexity_type: ""
-os_pam_complexity_control: ""
-os_pam_complexity_module: ""
-os_pam_complexity_module_arg: ""
+os_pam_complexity_type: "password"
+os_pam_complexity_control: "requisite"
+os_pam_complexity_module: "pam_pwquality.so"
+os_pam_complexity_module_arg: 
+  - "minlen={{ os_pam_password_length }}"
+  - "minclass={{ pam_character_classes }}"
+  - "maxrepeat=3"
+  - "reject_username"
+  - "enforce_for_root"
 
 # Req-44: If PAM is used, a protection against brute force and dictionary 
 #         attacks that hinder password guessing must be configured in PAM.
-os_pam_fail_login_files: "{{ os_pam_config_files }}"
+os_pam_fail_login_files: /etc/pam.d/common-account
 os_pam_fail_login_type: "auth"
 os_pam_fail_login_control: "required"
-os_pam_fail_login_module: "pam_faillock.so"
+os_pam_fail_login_module: "pam_tally2.so"
 
 # Req-45: If PAM is used , PAM must be configured that motd did not contain 
 #         any sensitive data.
-os_sshd_service_name: sshd
+os_sshd_service_name: ssh
 
 # Req-46 - 49: IPTables
-os_iptables_tools: "iptables-services"
-os_iptables_service: "iptables.service"
-os_ip6tables_service: "ip6tables.service"
-os_iptables_rules: ""
-os_ip6tables_rules: ""
+os_iptables_tools: "iptables-persistent"
+os_iptables_service: ""
+os_ip6tables_service: ""
+os_iptables_rules: "/etc/iptables/rules.v4"
+os_ip6tables_rules: "/etc/iptables/rules.v6"
 
 # Req-50: If a system has Internet facing services or is a virtualization
 #         host, a MAC solution must be used to restrict these services
 #         respectively guest VMs.
-os_mac_solution: "selinux"
+os_mac_solution: "apparmor"
 os_install_mac_tools: 
-  - "libselinux"
-  - "libselinux-python"
+  - "apparmor"
+  - "apparmor-utils"
 
 # Req-66: Permissions of security relevant configuration files must have 
 #         the distribution default values or more restrictive.
@@ -181,14 +204,14 @@ os_passwdm_mode: "0644"
 # File: /etc/shadow
 os_shadow_file: "/etc/shadow"
 os_shadow_owner: "root"
-os_shadow_group: "root"
-os_shadow_mode: "0000"
+os_shadow_group: "shadow"
+os_shadow_mode: "0640"
 
 # File: /etc/shadow-
 os_shadowm_file: "/etc/shadow-"
 os_shadowm_owner: "root"
-os_shadowm_group: "root"
-os_shadowm_mode: "0000"
+os_shadowm_group: "shadow"
+os_shadowm_mode: "0640"
 
 # File: /etc/group
 os_group_file: "/etc/group"
@@ -202,24 +225,24 @@ os_groupm_owner: "root"
 os_groupm_group: "root"
 os_groupm_mode: "0644"
 
-os_check_gshadow: true
+os_check_gshadow: false
 # File: /etc/gshadow
 os_gshadow_file: "/etc/gshadow"
 os_gshadow_owner: "root"
-os_gshadow_group: "root"
-os_gshadow_mode: "0000"
+os_gshadow_group: "shadow"
+os_gshadow_mode: "0640"
 
 # File: /etc/gshadow-
 os_gshadowm_file: "/etc/gshadow-"
 os_gshadowm_owner: "root"
-os_gshadowm_group: "root"
-os_gshadowm_mode: "0000"
+os_gshadowm_group: "shadow"
+os_gshadowm_mode: "0640"
 
-# File: /boot/grub2/grub.cfg
+# File: /boot/grub/grub.cfg
 os_grub_file: "{{ os_grub_config_file }}"
 os_grub_owner: "root"
 os_grub_group: "root"
-os_grub_mode: "0644"
+os_grub_mode: "0444"
 
 # Log files in /var/log
 os_logfile_mode: "o-wx"

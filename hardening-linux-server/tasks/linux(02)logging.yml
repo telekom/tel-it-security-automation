@@ -1,6 +1,6 @@
 ---
 # tel-it-security-automation :- Ansible roles for automated security hardening.  
-# Copyright (c) 2019 Markus Schumburg, [...] Deutsche Telekom AG 
+# Copyright (c) 2020 Maximilian Hertstein [...] Deutsche Telekom AG 
 # contact: devsecops@telekom.de 
 # This file is distributed under the conditions of the Apache-2.0 license. 
 # For details see the files LICENSING, LICENSE, and/or COPYING on the toplevel.
@@ -14,11 +14,54 @@
 # Tasks: 02 Logging
 # ========================================================================
 
-# Req-28: Logging must be enabled in bootloader configuration.
+# Req-28: Auditing must be enabled at boot by setting a kernel parameter.
 
-# - NOTE ------------------------------------------------------------------
-# Requirement is not implemented! 
-# -------------------------------------------------------------------------
+- name: req-28.1 check if GRUB_DISABLE_OS_PROBER exists
+  shell: grep -c "^GRUB_DISABLE_OS_PROBER=" /etc/default/grub || true
+  register: check_grub_prober
+  changed_when: false
+  check_mode: no
+  when: 
+    - config_req_28 | default(true)
+    - os_grub_disable_prober | default(false)
+
+- name: req-28.2 add GRUB_DISABLE_OS_PROBER to disable probing
+  lineinfile:
+    path: "/etc/default/grub"
+    line: 'GRUB_DISABLE_OS_PROBER=true'
+  notify: update grub
+  when: 
+    - config_req_28 | default(true)
+    - os_grub_disable_prober | default(false)
+    - check_grub_prober.stdout == "0"
+
+- name: req-28.1 check if GRUB_CMDLINE_LINUX exists
+  shell: grep -c "^GRUB_CMDLINE_LINUX=" /etc/default/grub || true
+  register: check_grub_config
+  changed_when: false
+  check_mode: no
+  when: config_req_28 | default(true)
+
+- name: req-28.2 add GRUB_CMDLINE_LINUX line if not existing
+  lineinfile:
+    path: "/etc/default/grub"
+    line: 'GRUB_CMDLINE_LINUX="audit=1"'
+  notify: update grub
+  when: 
+    - config_req_28 | default(true)
+    - check_grub_config.stdout == "0"
+
+- name: req-28.3 enable audit in config for grub
+  lineinfile:
+    path: "/etc/default/grub"
+    regexp: '^({{ item }}=(?!.*audit)\"[^\"]*)(\".*)'
+    line: '\1 audit=1\2'
+    backrefs: yes
+  notify: update grub
+  with_items:
+    - GRUB_CMDLINE_LINUX
+    - GRUB_CMDLINE_LINUX_DEFAULT
+  when: config_req_28 | default(true)
 
 # Req-29: Log rotation for logfiles must be configured.
 
@@ -29,7 +72,7 @@
     owner: root
     group: root
     mode: 0644
-  when: config_req_29
+  when: config_req_29 | default(true)
 
 # Req-30: System time must be synchronized against a reference time source.
 
@@ -41,7 +84,9 @@
     group: root
     mode: 0644
   notify: restart chrony
-  when: config_req_30
+  when: 
+    - config_req_30 | default(true)
+    - set_timesync_servers | length > 0
 
 - name: req-030.2 change chronyd file for Chrony
   lineinfile:
@@ -50,15 +95,15 @@
     line: '{{ os_timesync_chronyd_conf }}="-u {{ os_timesync_chronyd_user }}"'
   notify: restart chrony
   when: 
-    - config_req_30 
+    - config_req_30  | default(true)
     - os_timesync_chronyd_user is defined
 
 - name: req-030.3 set time zone
   command: timedatectl set-timezone {{ set_timezone }}
   changed_when: false
   when: 
-    - config_req_30 
-    - set_timezone|length > 0
+    - config_req_30 | default(true)
+    - set_timezone | length > 0
 
 # Req-31: Auditd service must be used to log security relevant events.
 
@@ -66,7 +111,7 @@
   package:
     name: '{{ os_audit_software }}'
     state: present
-  when: config_req_31
+  when: config_req_31 | default(true)
 
 - name: req-031.2 configure max size for log rotate in auditd.conf
   lineinfile:
@@ -74,7 +119,7 @@
     regexp: '^max_log_file ='
     line: 'max_log_file = {{ auditd_file_size }}'
     state: present
-  when: config_req_31
+  when: config_req_31 | default(true)
 
 - name: req-031.3 configure num_logs for log rotate for auditd
   lineinfile:
@@ -83,7 +128,7 @@
     line: 'num_logs = {{ auditd_num_logs }}'
     state: present
   notify: restart auditd
-  when: config_req_31
+  when: config_req_31 | default(true)
 
 - name: req-031.5 configure num_logs for logrotate for auditd
   lineinfile:
@@ -92,27 +137,21 @@
     line: 'max_log_file_action = {{ auditd_rotate_action }}'
     state: present
   notify: restart auditd
-  when: config_req_31
+  when: config_req_31 | default(true)
 
 # Req-32: System events must be logged.
 # Req-33: Access and Authentication events must be logged.
 # Req-34: Account and Group Management events must be logged.
 # Req-35: Configuration Change events must be logged.
 
-- name: set variable to enable auditd configuration
-  set_fact:
-    config_audit: true
-  when: ( config_req_32 or config_req_33 ) or
-        ( config_req_34 or config_req_35 )
-
 - name: set variable to disable auditd configuration
   set_fact:
     config_audit: false
   when: 
-    - not config_req_32
-    - not config_req_33
-    - not config_req_34
-    - not config_req_35
+    - not config_req_32 | default(true)
+    - not config_req_33 | default(true)
+    - not config_req_34 | default(true)
+    - not config_req_35 | default(true)
 
 - name: req-032-35.1 configure logging events
   template:
@@ -123,7 +162,7 @@
     mode: 0640
   notify: restart auditd
   when: 
-    - config_audit
+    - config_audit | default(true)
     - not ansible_check_mode
        
 - name: req-033.2 search for privileged commands
@@ -132,7 +171,7 @@
   changed_when: false
   check_mode: no
   when: 
-    - config_req_33
+    - config_req_33 | default(true)
 
 - name: req-033.3 configure logging for priviledged commands
   lineinfile:
@@ -142,7 +181,7 @@
   with_items: '{{ priv_commands.stdout_lines }}'
   notify: restart auditd
   when: 
-    - config_req_33
+    - config_req_33 | default(true)
     - not ansible_check_mode
 
 - name: req-033.4 check logging of events with auditd
@@ -161,7 +200,7 @@
     - "{{ change_events }}"
     - "{{ os_specific_change_events }}"
   when: 
-    - config_audit
+    - config_audit | default(true)
     - ansible_check_mode
  
 - name: req-035.3 check logging for priviledged commands
@@ -174,7 +213,7 @@
   changed_when: check_priv_log.changed
   when: 
     - ansible_check_mode
-    - config_req_35
+    - config_req_35 | default(true)
 
 # Req-36: Auditd configuration must be immutable.
 
@@ -183,17 +222,16 @@
     path: "{{ os_audit_rules_file }}"
     line: '-e 2'
     state: present
-  when: config_req_36
+  when: config_req_36 | default(true)
 
 # Req-37: Security relevant logging data must be send to an external system 
 #         direct after their creation.
 - name: req-037.1 check if the rsyslog is installed
   package:
-    name: "{{ syslog_type }}"
+    name: "{{ set_syslog_type }}"
     state: present
   when: 
-    - config_req_37
-    - syslog_type == "rsyslog"
+    - config_req_37 | default(true)
 
 # Req-38: If RSyslog is used, the default permission of 640 or more 
 #         restrictive for logfiles must be configured.
@@ -209,9 +247,9 @@
     mode: 0640
   notify: restart rsyslog
   when: 
-    - config_req_37
-    - config_req_38
-    - syslog_type == "rsyslog"
+    - config_req_37 | default(true)
+    - config_req_38 | default(true)
+    - set_syslog_type == "rsyslog"
 
 # Next task is only necessary for Ubuntu 16.04 as it has a depricated 
 # configuration parameter set in rsyslog configuration.
@@ -220,19 +258,16 @@
     path: "/etc/rsyslog.conf"
     line: "$KLogPermitNonKernelFacility on"
     state: absent
-  when: ansible_distribution_version == "16.04" and
-      ( config_req_39 and syslog_type == "rsyslog" )
+  when: 
+    - ansible_distribution_version == "16.04"
+    - config_req_37 | default(true)
+    - config_req_39 | default(true)
+    - set_syslog_type == "rsyslog"
 
-# Req-40: If Syslog-NG is used, the default permission of 640 or more 
-#         restrictive for logfiles must be configured.
+# | Req-40: If Syslog-NG is used, the default permission of 640 or more 
+# |         restrictive for logfiles must be configured.
+# | Req-41: If Syslog-NG is used, at least one central logging server must 
+# |         be configured.
+# |
+# |____ Requirement(s) not implemented! 
 
-# - NOTE ------------------------------------------------------------------
-# Requirement is not implemented! 
-# -------------------------------------------------------------------------
-
-# Req-41: If Syslog-NG is used, at least one central logging server must 
-#         be configured.
-
-# - NOTE ------------------------------------------------------------------
-# Requirement is not implemented! 
-# -------------------------------------------------------------------------

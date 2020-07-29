@@ -1,6 +1,6 @@
 ---
 # tel-it-security-automation :- Ansible roles for automated security hardening.  
-# Copyright (c) 2019 Markus Schumburg, [...] Deutsche Telekom AG 
+# Copyright (c) 2020 Maximilian Hertstein [...] Deutsche Telekom AG 
 # contact: devsecops@telekom.de 
 # This file is distributed under the conditions of the Apache-2.0 license. 
 # For details see the files LICENSING, LICENSE, and/or COPYING on the toplevel.
@@ -14,36 +14,24 @@
 # Tasks: 05 Mandatory Access Control
 # ========================================================================
 
-# Req-50: If a system has Internet facing services or is a virtualization 
-#         host, a MAC solution must be used.
-
-# - NOTE ------------------------------------------------------------------
-# Needed task for implementation is located in '/tasks/main.yml' because of
-# conflixt with installation process!
-# -------------------------------------------------------------------------
-
 # Req-51: If SELinux is used, it must not be disabled in bootloader 
 #         configuration.
-- name: req-051.1 enable selinux in grub config 
-  replace:
-    path: "{{ os_grub_config_file }}"
-    regexp: "selinux=0"
-    replace: "selinux=1"
-  notify: update grub
-  when: 
-    - config_req_51
-    - os_mac_solution == "selinux"
 
-- name: req-051.1 Enable enforcing for SELinux in grub config 
-  replace:
-    path: "{{ os_grub_config_file }}"
-    regexp: "enforcing=0"
-    replace: "enforcing=1"
+- name: req-051.1 enforce selinux state in bootloader config
+  lineinfile:
+    state: present
+    path: "/etc/default/grub"
+    backrefs: yes
+    regexp: '^({{ item }}=(?!.*enforcing)\"[^\"]*)(\".*)'
+    line: '\1 enforcing=1\2'
   notify: update grub
-  when: 
-    - config_req_51
+  with_items:
+    - GRUB_CMDLINE_LINUX
+    - GRUB_CMDLINE_LINUX_DEFAULT
+  when:
+    - config_req_51 | default(true)
     - os_mac_solution == "selinux"
-
+  
 # Req-52: If SELinux is used, its state must be enforced.
 # Req-53: If SELinux is used, the policy must be configured.
 
@@ -52,8 +40,8 @@
     policy: "{{ selinux_policy }}"  # Req-52
     state: "{{ selinux_state }}"    # Req-53
   when: 
-    - config_req_52
-    - config_req_53
+    - config_req_52 | default(true)
+    - config_req_53 | default(true)
     - os_mac_solution == "selinux"
 
 # Req-54: If SELinux is used, SETroubleshoot and MCS Translation Service 
@@ -65,20 +53,25 @@
     state: absent
   with_items: '{{ selinux_tools }}'
   when: 
-    - config_req_54
+    - config_req_54 | default(true)
     - os_mac_solution == "selinux"
 
 # Req-55: If AppArmor is used, it must not be disabled in bootloader 
 #         configuration.
 
-- name: req-055.1 enable apparmor in grub config 
-  replace:
-    path: "{{ os_grub_config_file }}"
-    regexp: "apparmor=0"
-    replace: "apparmor=1"
+- name: req-055.1 enforce apparmor state in bootloader config
+  lineinfile:
+    state: present
+    path: "/etc/default/grub"
+    backrefs: yes
+    regexp: '^({{ item }}=(?!.*apparmor)\"[^\"]*)(\".*)'
+    line: '\1 apparmor=1\2'
   notify: update grub
-  when: 
-    - config_req_55
+  with_items:
+    - GRUB_CMDLINE_LINUX
+    - GRUB_CMDLINE_LINUX_DEFAULT
+  when:
+    - config_req_55 | default(true)
     - os_mac_solution == "apparmor"
 
 # Req-56: AppArmor is used, its state must be enforced.
@@ -89,7 +82,7 @@
     state: started 
     enabled: yes
   when: 
-    - config_req_56
+    - config_req_56 | default(true)
     - os_mac_solution == "apparmor"
 
 - name: req-056.2 enforce apparmor state
@@ -97,7 +90,7 @@
   with_items: "{{ enforce_apparmor_files.stdout_lines | default([]) }}"
   changed_when: false
   when: 
-    - config_req_56
+    - config_req_56 | default(true)
     - os_mac_solution == "apparmor"
 
 

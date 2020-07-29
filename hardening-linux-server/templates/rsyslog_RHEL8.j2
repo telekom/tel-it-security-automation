@@ -1,5 +1,5 @@
 # tel-it-security-automation :- Ansible roles for automated security hardening.  
-# Copyright (c) 2019 Markus Schumburg, [...] Deutsche Telekom AG 
+# Copyright (c) 2020 Maximilian Hertstein [...] Deutsche Telekom AG 
 # contact: devsecops@telekom.de 
 # This file is distributed under the conditions of the Apache-2.0 license. 
 # For details see the files LICENSING, LICENSE, and/or COPYING on the toplevel.
@@ -89,4 +89,4 @@ action.resumeRetryCount="-1"    # infinite retries if host is down
 # Remote Logging (we use TCP for reliable delivery)
 # remote_host is: name/ip, e.g. 192.168.0.1, port optional e.g. 10514
 Target="{{syslog_server}}" Port="{{syslog_port}}" Protocol="{{syslog_protocol}}")
-*.* @{% if syslog_protocol == 'tcp' %}@{% endif %}{{syslog_server}}:{{syslog_port}}
+*.* @{% if set_syslog_protocol == 'tcp' %}@{% endif %}{{set_syslog_server}}:{{set_syslog_port}}

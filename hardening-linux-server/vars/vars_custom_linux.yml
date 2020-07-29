@@ -1,6 +1,6 @@
 ---
 # tel-it-security-automation :- Ansible roles for automated security hardening.  
-# Copyright (c) 2019 Markus Schumburg, [...] Deutsche Telekom AG 
+# Copyright (c) 2020 Maximilian Hertstein [...] Deutsche Telekom AG 
 # contact: devsecops@telekom.de 
 # This file is distributed under the conditions of the Apache-2.0 license. 
 # For details see the files LICENSING, LICENSE, and/or COPYING on the toplevel.
@@ -11,7 +11,7 @@
 # Security Hardening & Compliance Checks
 # Linux OS for Servers (3.65)
 #
-# Variables for Default Settings
+# Variables for User Config
 # ========================================================================
 
 # -- NOTE ----------------------------------------------------------------
@@ -28,25 +28,24 @@
 # Req-1: Unused services and protocols must be deactivated.
 config_req_01: true
 
-# Req-2: The reachability of services must be restricted.
-
-# If enabled IPTables will be used to protect your system.
-config_req_02: true
-
 # Define TCP/UDP ports that should be allowed with IPTables. 
 tcp_services:
   - "22" # Don't delete. Otherwise Ansible didn't work!
 
-udp_services: ""
+udp_services: 
+  - "68"
+  - "123"
+
+# Req-2: The reachability of services must be restricted.
+config_req_02: true
 
 # Req-3: Unused software must not be installed or must be uninstalled.
 config_req_03: true
 
 # Req-4: Dedicated partitions must be used for growing content that can 
 #        influence the availability of the system.
-
-# Enable (true) to create partition for /var and /temp automatically.
 config_req_04: true
+# Enable (true) to create partition for /var and /tmp automatically.
 
 # - NOTE ------------------------------------------------------------------
 # Enable (true) to create partition for /var and /temp automatically.
@@ -93,31 +92,24 @@ config_req_16: true
 
 # Req-17: Emerged vulnerabilities in software and hardware of a system must 
 #         be fixed or protected against misuse.
-
-# Enable (true) if Ansible should do an update to current patch level.
 config_req_17: true
+# Enable (true) if Ansible should do an update to current patch level.
 
 # Req-18: GPG check for repository server must be activated and corresponding
 #         keys for trustable repositories must be configured.
-config_req_18: false
-
-# -------------------------------------------------------------------------
-# NOTE: Not implemented in this version! 
-# -------------------------------------------------------------------------
+config_req_18: true
 
 # Req-19: User accounts must be used that allow unambiguous identification 
 #         of the user.
-
-# Enable (true) to delete all not needed local users with login capability
-# and configure allowed users that should not be deleted.
 config_req_19: true
 
 # -------------------------------------------------------------------------
 # IMPORTANT: Enter here the user used to execute the Ansible role! Otherise
 #            the execution will fail!
 # -------------------------------------------------------------------------
-allowed_users: ['devsecops']
-# Add more users with ['user-1','user-2','user-n']
+allowed_users: 
+  - "devsecops"
+  # - ""    # Add more users if needed
 
 # Req-20: System accounts must be non-login.
 config_req_20: true
@@ -128,7 +120,7 @@ config_req_21: true
 
 # Req-22: User accounts with extensive rights must be protected with two 
 #         authentication attributes.
-config_req_22: true
+# config_req_22: true
 
 # -------------------------------------------------------------------------
 # NOTE: Requirement is not implemented! If SSH is used, make sure to enable
@@ -137,11 +129,7 @@ config_req_22: true
 
 # Req-23: The system must be connected to a central system for user 
 #         administration.
-config_req_23: false
-
-# -------------------------------------------------------------------------
-# NOTE: Not implemented in this version! 
-# -------------------------------------------------------------------------
+# config_req_23: true  # NOTE: Not implemented in this version! 
 
 # Req-24: Authentication must be used for single user mode.
 config_req_24: true
@@ -150,36 +138,20 @@ config_req_24: true
 #         management network.
 config_req_25: false
 
-# -------------------------------------------------------------------------
-# NOTE: Not implemented in this version! 
-# -------------------------------------------------------------------------
-
-# Define IPv4/IPv6 address for mgmt interface.
-mgmt_interface_ipv4: ""
-mgmt_interface_ipv6: ""
-
 # Req-26: Management services must be bound to the management network.
-config_req_26: false
-
-# -------------------------------------------------------------------------
-# NOTE: Not implemented in this version! 
-# -------------------------------------------------------------------------
+# config_req_26: true # NOTE: Not implemented in this version! 
 
 # Req-27: Encrypted protocols must be used for management access to 
 #         administrate the operating system.
-config_req_27: false
+# config_req_27: true
 
 # -------------------------------------------------------------------------
 # NOTE: Requirement is not implemented! Use SSH or other encrypted service 
 # for system management to be compliant!
 # -------------------------------------------------------------------------
 
-# Req-28: Logging must be enabled in bootloader configuration.
-config_req_28: false
-
-# -------------------------------------------------------------------------
-# NOTE: Not implemented in this version! 
-# -------------------------------------------------------------------------
+# Req-28: Auditing must be enabled at boot by setting a kernel parameter.
+config_req_28: true
 
 # Req-29: Log rotation for logfiles must be configured.
 config_req_29: true
@@ -188,12 +160,11 @@ config_req_29: true
 config_req_30: true
 
 timesync_servers:
-  - "169.254.169.123"
-  - "ntp01.otc-service.com"
-  - "ntp02.otc-service.com"
-# Timesync servers AWS: 169.254.169.123
-# Timesync servers OTC:	ntp01.otc-service.com; ntp02.otc-service.com
-set_timezone: "Europe/Berlin"
+  - "169.254.169.123"        # AWS
+  - "ntp01.otc-service.com"  # OTC
+  - "ntp02.otc-service.com"  # OTC
+  # - ""
+timezone: "Europe/Berlin"
 
 # Req-31: Auditd service must be used to log security relevant events.
 config_req_31: true
@@ -220,7 +191,7 @@ config_req_37: true
 # -------------------------------------------------------------------------
 # NOTE: Only 'rsyslog' is available. Syslog-NG is not implemented! 
 # -------------------------------------------------------------------------
-syslog_type: "rsyslog"
+# syslog_type: "rsyslog"
 
 # Req-38: If RSyslog is used, the default permission of 640 or more 
 #         restrictive for logfiles must be configured.
@@ -236,28 +207,22 @@ syslog_port: "514"
 
 # Req-40: If Syslog-NG is used, the default permission of 640 or more 
 #         restrictive for logfiles must be configured.
-config_req_40: false
+# config_req_40: true  # NOTE: Not implemented in this version! 
 
-# -------------------------------------------------------------------------
-# NOTE: Not implemented in this version! 
-# -------------------------------------------------------------------------
 
 # Req-41: If Syslog-NG is used, at least one central logging server must be 
 #         configured.
-config_req_41: false
+#config_req_41: true  # NOTE: Not implemented in this version! 
 
-# -------------------------------------------------------------------------
-# NOTE: Not implemented in this version! 
-# -------------------------------------------------------------------------
-
-# Req-42: If PAM is used, an appropriate hashing function must be configured 
-#         for password protection for PAM.
+# Req-42: If PAM is used, it needs to be reconfigured to use strong salted
+#         password hash functions while doing many calculation rounds to protect
+#         passwords.
 config_req_42: true
 
-# Req-43: If PAM is used, password rules must be configured for PAM to force 
-#         the use of passwords with a minimum length of 8 characters and a 
-#         combination of three out of the following categories: upper cases, 
-#         lower case, numbers and special characters.
+# Req-43: If PAM is used, password rules must be configured for PAM to
+#         force the use of passwords with a minimum length of 12 characters
+#         and a combination of three out of the following categories: upper
+#         cases, lower case, numbers and special characters.
 config_req_43: true
 
 # Req-44: If PAM is used, a protection against brute force and dictionary 
@@ -267,6 +232,12 @@ config_req_44: true
 # Req-45: If PAM is used , PAM must be configured that motd did not contain 
 #         any sensitive data.
 config_req_45: true
+
+# -------------------------------------------------------------------------
+# NOTE (Req-46 - 49: IPTables)
+# We don't support IPTables on SLES 12 as Suse messed it up with 
+# SuSEFirewall2 solution.
+# -------------------------------------------------------------------------
 
 # Req-46: If iptables is used, policies for loopback traffic must be 
 #         configured.
@@ -280,12 +251,13 @@ config_req_47: true
 #         listening state.
 config_req_48: true
 
-# Req-49: If iptables is used, the default policy must be configured to 
-#         drop all traffic.
+# Req-49: If iptables is used, the default policy for tables INPUT and FORWARD
+#         must be configured to drop all traffic.
 config_req_49: true
 
-# Req-50: If a system has Internet facing services or is a virtualization 
-#         host, a MAC solution must be used.
+# Req-50: If a system has Internet facing services or is a virtualization
+#         host, a MAC solution must be used to restrict these services
+#         respectively guest VMs.
 config_req_50: true
 
 # Req-51: If SELinux is used, it must not be disabled in bootloader c
@@ -331,7 +303,7 @@ config_req_62: true
 # Req-63: No duplicate user and group names must exist.
 config_req_63: true
 
-# Req-64: The shadow group must be empty (only Ubuntu Linux).
+# Req-64: The shadow group must be empty (only Debian-based Linux distributions).
 config_req_64: true
 
 # Req-65: No files and directories without assigned user or group must exist.
@@ -340,11 +312,3 @@ config_req_65: true
 # Req-66: Permissions of security relevant configuration files must have 
 #         the distribution default values or more restrictive.
 config_req_66: true
-
-# Req-67: If passwords are used as an authentication attribute, those must 
-#         be stored using a suitable and approved "Password Hashing" method 
-#         to protect against offline-attacks like brute force or dictionary
-#         attacks.
-
-# Requirement is not implemented in this role as it has the same intention 
-# as Req. 42!

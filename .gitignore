@@ -1,0 +1,19 @@
+# ========================================================================
+# Deutsch Telekom IT - DevSecOps Team (devsecops@telekom.de)
+# ========================================================================
+
+# Files and directories not to track in git tree
+
+# Global files for the entire tree
+*.bak
+*.tmp
+*.log
+*.csv
+cred*
+*-SID*
+.DS_Store
+
+# Global directories for the entire tree
+/.terraform
+/.vscode
+/.aws

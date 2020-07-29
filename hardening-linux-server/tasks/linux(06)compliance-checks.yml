@@ -1,6 +1,6 @@
 ---
 # tel-it-security-automation :- Ansible roles for automated security hardening.  
-# Copyright (c) 2019 Markus Schumburg, [...] Deutsche Telekom AG 
+# Copyright (c) 2020 Maximilian Hertstein [...] Deutsche Telekom AG 
 # contact: devsecops@telekom.de 
 # This file is distributed under the conditions of the Apache-2.0 license. 
 # For details see the files LICENSING, LICENSE, and/or COPYING on the toplevel.
@@ -27,7 +27,7 @@
   always:
     - debug:
         msg: "WARNING: If task failes legacy entries exist in passwd file!"
-  when: config_req_57
+  when: config_req_57 | default(true)
 
 - block:
     - name: req-057.2 check shadow file for legacy entry
@@ -39,7 +39,7 @@
   always:
     - debug:
         msg: "WARNING: If task failes legacy entries exist in shadow file!"
-  when: config_req_57
+  when: config_req_57 | default(true)
 
 - block:
     - name: req-057.3 check group file for legacy entry
@@ -51,7 +51,7 @@
   always:
     - debug:
         msg: "WARNING: If task failes legacy entries exist in group file!"
-  when: config_req_57
+  when: config_req_57 | default(true)
 
 # Req-58: A user's home directory must be owned by the user and have mode 
 #         750 or more restrictive.
@@ -61,7 +61,7 @@
   register: user_dirs
   changed_when: false
   check_mode: no
-  when: config_req_58
+  when: config_req_58 | default(true)
 
 - name: req-058.1 change user and permissions of home directories
   file:
@@ -71,7 +71,7 @@
     group: "{{ item }}"
     mode: o-rwx
   with_items: "{{ user_dirs.stdout_lines | default([]) }}"
-  when: config_req_58
+  when: config_req_58 | default(true)
 
 # Req-59: Default group for the root account must be GID 0.
 
@@ -85,7 +85,7 @@
   always:
     - debug:
         msg: "WARNING: If task fails GID of root is not 0!"
-  when: config_req_59
+  when: config_req_59 | default(true)
 
 # Req-60: Root must be the only UID 0 account.
 
@@ -99,7 +99,7 @@
   always:
     - debug:
         msg: "WARNING: If task fails more than one user with uid 0 exists!"
-  when: config_req_60
+  when: config_req_60 | default(true)
 
 # Req-61: All groups in /etc/passwd must exist in /etc/group.
 
@@ -108,7 +108,7 @@
   register: read_users
   changed_when: false
   check_mode: no
-  when: config_req_61
+  when: config_req_61 | default(true)
 
 - block:
     - name: req-061.1 check if group exist for users
@@ -121,7 +121,7 @@
   always:
     - debug:
         msg: "WARNING: If task fails not all groups exists in /etc/group file!"
-  when: config_req_61
+  when: config_req_61 | default(true)
 
 # Req-62: No duplicate UIDs and GIDs must exist.
 
@@ -130,7 +130,7 @@
   register: read_uid
   changed_when: false
   check_mode: no
-  when: config_req_62
+  when: config_req_62 | default(true)
 
 - block:
     - name: req-062.1 check if duplicated uid exist
@@ -143,14 +143,14 @@
   always:
     - debug:
         msg: "WARNING: If task fails duplicated uid exists in /etc/passwd file!"
-  when: config_req_62
+  when: config_req_62 | default(true)
 
 - name: read gids from /etc/group
   command: awk -F':' '{print $3}' /etc/group
   register: read_gid
   changed_when: false
   check_mode: no
-  when: config_req_62
+  when: config_req_62 | default(true)
 
 - block:
     - name: req-062.2 check if duplicated gid exist
@@ -162,8 +162,8 @@
       with_items: "{{ read_gid.stdout_lines }}"
   always:
     - debug:
-        msg: "WARNING: If taks fails duplicated gid exists in /etc/group file!"
-  when: config_req_62
+        msg: "WARNING: If task fails duplicated gid exists in /etc/group file!"
+  when: config_req_62 | default(true)
 
 # Req-63: No duplicate user and group names must exist.
 
@@ -172,7 +172,7 @@
   register: read_users2
   changed_when: false
   check_mode: no
-  when: config_req_63
+  when: config_req_63 | default(true)
 
 - block:
     - name: req-063.1 check if duplicated users exist
@@ -185,14 +185,14 @@
   always:
     - debug:
         msg: "WARNING: If task fails duplicated users exists in /etc/passwd file!"
-  when: config_req_63
+  when: config_req_63 | default(true)
 
 - name: read groups from /etc/group
   shell: awk -F':' '{print $1}' /etc/group
   register: read_groups2
   changed_when: false
   check_mode: no
-  when: config_req_63
+  when: config_req_63 | default(true)
 
 - block:
     - name: req-063.2 check if duplicated groups exist
@@ -205,9 +205,9 @@
   always:
     - debug:
         msg: "WARNING: If task fails duplicated groups exists in /etc/group file!"
-  when: config_req_63
+  when: config_req_63 | default(true)
 
-# Req-64: The shadow group must be empty (only Ubuntu Linux).
+# Req-64: The shadow group must be empty (only Debian-based Linux distributions).
 
 - block:
     - name: req-064.1 check if shadow is epmty
@@ -219,14 +219,14 @@
   always:
     - debug:
         msg: "WARNING: If task fails the group shadow is not empty!"
-  when: config_req_64
+  when: config_req_64 | default(true)
 
 - name: read gid from shadow group
   shell: awk -F':' '{if ($1 == "shadow") print $3}' /etc/group
   register: read_gid_shadow
   changed_when: false
   check_mode: no
-  when: config_req_64
+  when: config_req_64 | default(true)
 
 - block:
     - name: req-064.2 check if user is member of shadow
@@ -238,7 +238,7 @@
   always:
     - debug:
         msg: "WARNING: If task fails user is memenber of group shadow!"
-  when: config_req_64
+  when: config_req_64 | default(true)
 
 # Req-65: No files and directories without assigned user or group must
 #         exist.
@@ -248,7 +248,7 @@
   register: find_unowned
   changed_when: false
   check_mode: no
-  when: config_req_65
+  when: config_req_65 | default(true)
 
 - name: req-065.2 set user for unowned files to root
   file:
@@ -257,7 +257,7 @@
     group: "root"
   with_items: "{{ find_unowned.stdout_lines | default([]) }}"
   when: 
-    - config_req_65
+    - config_req_65 | default(true)
     - find_unowned.stdout != ""
 
 - name: req-065.3 search for files without group
@@ -265,7 +265,7 @@
   register: find_no_group
   changed_when: false
   check_mode: no
-  when: config_req_65
+  when: config_req_65 | default(true)
 
 - name: req-065.4 set group for files without group to root
   file:
@@ -273,7 +273,7 @@
     group: "root"
   with_items: "{{ find_no_group.stdout_lines | default([]) }}"
   when: 
-    - config_req_65
+    - config_req_65 | default(true)
     - find_no_group.stdout != ""
 
 # Req-66: Permissions of security relevant configuration files must have 
@@ -292,7 +292,7 @@
     - { path: "{{ os_shadowm_file }}", owner: "{{ os_shadowm_owner }}", group: "{{ os_shadowm_group }}", mode: "{{ os_shadowm_mode }}" }
     - { path: "{{ os_group_file }}", owner: "{{ os_group_owner }}", group: "{{ os_group_group }}", mode: "{{ os_group_mode }}" }
     - { path: "{{ os_groupm_file }}", owner: "{{ os_groupm_owner }}", group: "{{ os_groupm_group }}", mode: "{{ os_groupm_mode }}" }
-  when: config_req_66
+  when: config_req_66 | default(true)
 
 - name: req-066.2 check permissions of all gshadow files
   file:
@@ -304,7 +304,7 @@
     - { path: "{{ os_gshadow_file }}", owner: "{{ os_gshadow_owner }}", group: "{{ os_gshadow_group }}", mode: "{{ os_gshadow_mode }}" }
     - { path: "{{ os_gshadowm_file }}", owner: "{{ os_gshadowm_owner }}", group: "{{ os_gshadowm_group }}", mode: "{{ os_gshadowm_mode }}" }
   when: 
-    - config_req_66
+    - config_req_66 | default(true)
     - os_check_gshadow
 
 - name: req-066.3 check permissions of bootloader config
@@ -313,21 +313,21 @@
     owner: "{{ os_grub_owner }}"
     group: "{{ os_grub_group }}"
     mode: "{{ os_grub_mode }}"
-  when: config_req_66
+  when: config_req_66 | default(true)
 
 - name: check for logfiles
   shell: find /var/log -type f | grep -v "(history.log)"
   register: check_logfiles
   changed_when: false
   check_mode: no
-  when: config_req_66
+  when: config_req_66 | default(true)
 
 - name: req-066.4 check permissions of logfiles
   file:
     path: '{{ item }}'
     mode: '{{ os_logfile_mode }}'
   with_items: "{{ check_logfiles.stdout_lines }}"
-  when: config_req_66
+  when: config_req_66 | default(true)
 
 - name: req-066.5 check permissions for sysctl.conf
   file:
@@ -335,12 +335,4 @@
     owner: "{{ os_sysctl_owner }}"
     group: "{{ os_sysctl_group }}"
     mode: "{{ os_sysctl_mode }}"
-  when: config_req_66
-
-- name: req-066.6 check permissions of sshd_config config
-  file:
-    path: "{{ os_sshd_conf_file }}"
-    owner: "{{ os_sshd_conf_owner }}"
-    group: "{{ os_sshd_conf_group }}"
-    mode: "{{ os_sshd_conf_mode }}"
-  when: config_req_66
+  when: config_req_66 | default(true)

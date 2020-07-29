@@ -1,6 +1,6 @@
 ---
 # tel-it-security-automation :- Ansible roles for automated security hardening.  
-# Copyright (c) 2019 Markus Schumburg, [...] Deutsche Telekom AG 
+# Copyright (c) 2020 Maximilian Hertstein [...] Deutsche Telekom AG 
 # contact: devsecops@telekom.de 
 # This file is distributed under the conditions of the Apache-2.0 license. 
 # For details see the files LICENSING, LICENSE, and/or COPYING on the toplevel.
@@ -16,20 +16,14 @@
 
 # PAM tasks needed for Req-42 - 45
 
-- name: set variable to enable PAM configuration
-  set_fact:
-    config_pam: true
-  when: ( config_req_42 or config_req_43 ) or
-        ( config_req_44 or config_req_44 )
-
 - name: set variable to disable PAM configuration
   set_fact:
     config_pam: false
   when: 
-    - not config_req_42
-    - not config_req_43
-    - not config_req_44 
-    - not config_req_44
+    - not config_req_42 | default(true)
+    - not config_req_43 | default(true)
+    - not config_req_44 | default(true)
+    - not config_req_45 | default(true)
 
 - name: req-42-45.1 register variable for config files for PAM
   stat:
@@ -38,14 +32,18 @@
   with_items:
     - "{{ os_pam_config_files }}"
   when: 
-    - config_pam and not ansible_check_mode
+    - config_pam | default(true)
+    - not ansible_check_mode
 
 - name: req-42-45.2 register variable for config files for PAM config tools
   stat:
     path: "{{ item.0 }}"
   register: pam_config_tool_files
-  when: (config_pam and not ansible_check_mode) and
-        (item.1.stat.exists and item.1.stat.islnk)
+  when: 
+    - config_pam | default(true)
+    - not ansible_check_mode
+    - item.1.stat.exists 
+    - item.1.stat.islnk
   with_together:
     - "{{ os_pam_config_files }}"
     - "{{ pam_config_files.results }}"
@@ -56,15 +54,19 @@
     dest: "{{ item.0 }}"
     remote_src: yes
     follow: no
-  when: (config_pam and not ansible_check_mode) and
-        (item.1.stat.exists and item.1.stat.islnk)
+  when: 
+    - config_pam | default(true) 
+    - not ansible_check_mode
+    - item.1.stat.exists
+    - item.1.stat.islnk
   with_together: 
     - "{{ os_pam_config_files }}"
     - "{{ pam_config_files.results }}"
     - "{{ pam_config_tool_files.results }}"
 
-# Req-42: If PAM is used, an appropriate hashing function must be configured 
-#         for password protection for PAM.
+# Req-42: If PAM is used, it needs to be reconfigured to use strong salted
+#         password hash functions while doing many calculation rounds to protect
+#         passwords.
 
 - name: req-042.1 configure hashing function for password protection for PAM
   pamd:
@@ -76,15 +78,12 @@
     state: args_present
   with_items: 
     - "{{ os_pam_config_files }}"
-  when: config_req_42 
+  when: config_req_42 | default(true)
 
-# Req-43: If PAM is used, password rules must be configured for PAM to force 
-#         the use of passwords with a minimum length of 8 characters and a 
-#         combination of three out of the following categories: upper cases, 
-#         lower case, numbers and special characters.
-
-# NOTE: New requirement from Telekom Security (see SecReq. 3.01) is a length
-# of 12 characters!
+# Req-43: If PAM is used, password rules must be configured for PAM to
+#         force the use of passwords with a minimum length of 12 characters
+#         and a combination of three out of the following categories: upper
+#         cases, lower case, numbers and special characters.
 
 - name: req-043.1 install PAM password modules (Ubuntu)
   package:
@@ -93,7 +92,7 @@
   with_items:
     - "{{ os_pam_pwmodules }}"
   when: 
-    - config_req_43
+    - config_req_43 | default(true)
     - os_install_pam_pwmodules
 
 - name: req-043.2 configure password rules
@@ -104,7 +103,7 @@
     group: root
     mode: 0644
   when: 
-    - config_req_43
+    - config_req_43 | default(true)
     - os_use_pam_pwquality_conf
 
 - name: req-043.3 configure appropriate password complexity for PAM (Suse)
@@ -118,7 +117,7 @@
   with_items: 
     - "{{ os_pam_complexity_files }}"
   when: 
-    - config_req_43
+    - config_req_43 | default(true)
     - ansible_os_family == "Suse"
 
 - name: req-043.4 configure appropriate password complexity for PAM (Ubuntu)
@@ -135,7 +134,7 @@
   with_items: 
     - "{{ os_pam_complexity_files }}"
   when: 
-    - config_req_43
+    - config_req_43 | default(true)
     - ansible_distribution == "Ubuntu"
 
 # Req-44: If PAM is used, a protection against brute force and dictionary 
@@ -155,7 +154,7 @@
       - "unlock_time={{ unlock_time }}"
     state: after
   when: 
-    - config_req_44
+    - config_req_44 | default(true)
     - ansible_os_family == "Suse"
 
 - name: req-044.2 configure brute force protection for PAM (Suse) 2/2
@@ -169,7 +168,7 @@
     new_module_path: "{{ os_pam_fail_login_module }}"
     state: after
   when: 
-    - config_req_44
+    - config_req_44 | default(true)
     - ansible_os_family == "Suse"
 
 - name: req-044.3 configure brute force protection for PAM (Ubuntu)
@@ -186,7 +185,7 @@
       - "unlock_time={{ unlock_time }}"
     state: before
   when: 
-    - config_req_44
+    - config_req_44 | default(true)
     - ansible_distribution == "Ubuntu"
 
 - name: req-044.4 configure line 1 for pam_faillock.so
@@ -207,7 +206,7 @@
   with_items:
     - "{{ os_pam_fail_login_files }}"
   when: 
-    - config_req_44
+    - config_req_44 | default(true)
     - os_pam_fail_login_module == "pam_faillock.so"
 
 - name: req-044.5 configure line 2 for pam_faillock.so
@@ -227,7 +226,7 @@
   with_items:
     - "{{ os_pam_fail_login_files }}"
   when: 
-    - config_req_44
+    - config_req_44 | default(true)
     - os_pam_fail_login_module == "pam_faillock.so"
 
 - name: req-044.6 configure line 3 for pam_faillock.so
@@ -243,7 +242,7 @@
   with_items:
     - "{{ os_pam_fail_login_files }}"
   when: 
-    - config_req_44
+    - config_req_44 | default(true)
     - os_pam_fail_login_module == "pam_faillock.so"
 
 # Req-45: If PAM is used , PAM must be configured that motd did not contain 
@@ -256,7 +255,7 @@
     owner: root
     group: root
     mode: 0644
-  when: config_req_45
+  when: config_req_45 | default(true)
 
 - name: req-045.2 check for and comment out if found pam_motd.so for PAM
   replace:
@@ -265,4 +264,4 @@
     replace: '#session  optional  pam_motd.so'
   with_items: "{{ files_motd }}"
   notify: restart sshd
-  when: config_req_45
+  when: config_req_45 | default(true)

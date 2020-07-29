@@ -1,6 +1,6 @@
 ---
 # tel-it-security-automation :- Ansible roles for automated security hardening.  
-# Copyright (c) 2019 Markus Schumburg, [...] Deutsche Telekom AG 
+# Copyright (c) 2020 Maximilian Hertstein [...] Deutsche Telekom AG 
 # contact: devsecops@telekom.de 
 # This file is distributed under the conditions of the Apache-2.0 license. 
 # For details see the files LICENSING, LICENSE, and/or COPYING on the toplevel.
@@ -11,6 +11,408 @@
 # Security Hardening & Compliance Checks
 # Linux OS for Servers (3.65)
 #
-# Vars
+# Main Variables
 # ========================================================================
 
+# ------------------------------------------------------------------------
+# 01 Basic Hardening
+# ------------------------------------------------------------------------
+
+# Req-2: The reachability of services must be restricted.
+firewall_solution: "iptables"   # Only IPTables is supported!
+
+# Req-3: Unused software must not be installed or must be uninstalled.
+servers:
+  - "openbsd-inetd"
+  - "inetutils-inetd"
+  - "xinetd"
+  - "xserver-xorg-core"
+  - "xterm"
+  - "nfs-kernel-server"
+  - "vsftpd"
+  - "ftpd"
+  - "dovecot-core"
+  - "dovecot-pop3d"
+  - "dovecot-imapd"
+  - "isc-dhcp-server" 
+  - "dhcp-server"
+  - "dhcp-relay"
+  - "nis"
+  - "avahi-daemon"
+  - "cups" 
+  - "snmpd"
+  - "samba"
+
+clients:
+  - "talk"
+  - "telnet"
+  - "tftp"
+  - "lftp"
+  - "ftp"
+  - "rsh-redone-client"
+  - "ldap-utils"
+
+# Req-4: Dedicated partitions must be used for growing content that can 
+#        influence the availability of the system.
+delete_temporary_directory:
+  - "/mnt/var/"
+  - "/mnt/tmp/"
+  - "/tmp/some_temporary_data"
+create_temporary_directory:
+  - "/mnt/var/"
+  - "/mnt/tmp/"
+
+# Req-5: Parameters nodev:  nosuid and noexec must be set for partitions 
+#        where this is applicable.
+partitions_security_nodev_nosuid_noexec:
+  - { opts: "bind,nodev,nosuid,noexec", point: "/var/tmp" }
+  - { opts: "bind,nodev,nosuid,noexec", point: "/dev/shm" }
+
+partitions_security_nodev_nosuid:
+  - { opts: "bind,nodev,nosuid", point: "/tmp" }
+
+partitions_security_nodev:
+  - { opts: "bind,nodev", point: "/home" }
+
+# Req-7: The use of at/cron must be restricted to authorized users.
+delete_files_cron_at_deny:
+   - "/etc/cron.deny"
+   - "/etc/at.deny"
+
+create_files_for_restricted_cron_at:
+  - "/etc/cron.allow"
+  - "/etc/at.allow"
+
+authorized_user_for_cron_at: "root"
+
+# Req-10: Passwords must be protected with an appropriate hashing function.
+sha512_rounds_min: 640000
+sha512_rounds_max: 640000
+
+# Req-11: The default user umask must be 027 or more restrictive.
+set_umask: "027"
+
+# Req-12: Not needed SUID and SGID bits must be removed from executables.
+allowed_executables:
+  - "/bin/ping"
+  - "/sbin/pam_timestamp_check"
+  - "/sbin/unix_chkpwd"
+  - "/usr/bin/at"
+  - "/usr/bin/gpasswd"
+  - "/usr/bin/locate"
+  - "/usr/bin/newgrp"
+  - "/usr/bin/passwd"
+  - "/usr/bin/ssh-agent"
+  - "/usr/libexec/utempter/utempter"
+  - "/usr/sbin/lockdev"
+  - "/usr/sbin/sendmail.sendmail"
+  - "/usr/bin/expiry"
+  - "/bin/ping6"
+  - "/usr/bin/traceroute6.iputils"
+  - "/sbin/mount.nfs"
+  - "/sbin/umount.nfs"
+  - "/sbin/mount.nfs4"
+  - "/sbin/umount.nfs4"
+  - "/usr/bin/crontab"
+  - "/usr/bin/wall"
+  - "/usr/bin/write"
+  - "/usr/bin/screen"
+  - "/usr/bin/mlocate"
+  - "/usr/bin/chage"
+  - "/usr/bin/chfn"
+  - "/usr/bin/chsh"
+  - "/bin/fusermount"
+  - "/usr/bin/pkexec"
+  - "/usr/bin/sudo"
+  - "/usr/bin/sudoedit"
+  - "/usr/sbin/postdrop"
+  - "/usr/sbin/postqueue"
+  - "/usr/sbin/suexec"
+  - "/usr/sbin/ccreds_validate"
+  - "/usr/lib/dbus-1.0/dbus-daemon-launch-helper"
+  - "/usr/lib/policykit-1/polkit-agent-helper-1"
+
+# Req-13: Core dumps must be disabled.
+coredumps:
+  fs.suid_dumpable: 0
+
+# Req-14: Protection against buffer overflows must be enabled.
+enable_bufferoverflow_protection:
+  kernel.randomize_va_space: 2
+
+# Req-15: IPv4 protocol stack must be securely configured.
+network_config_ipv4:
+  #IPv4 forwarding must be disabled.
+  net.ipv4.ip_forward: 0
+  #IPv4 redirects must not be accepted.
+  net.ipv4.conf.all.accept_redirects: 0
+  net.ipv4.conf.default.accept_redirects: 0
+  #Secure IPv4 redirects must not be accepted.
+  net.ipv4.conf.all.secure_redirects: 1
+  net.ipv4.conf.default.secure_redirects: 1
+  #IPv4 packet redirect sending must be disabled.
+  net.ipv4.conf.all.send_redirects: 0
+  net.ipv4.conf.default.send_redirects: 0
+  #IPv4 source routed packets must not be accepted.
+  net.ipv4.conf.all.accept_source_route: 0
+  net.ipv4.conf.default.accept_source_route: 0
+  #Suspicious packets must be logged
+  net.ipv4.conf.all.log_martians: 1
+  net.ipv4.conf.default.log_martians: 1
+  #Broadcast ICMP requests must be ignored.
+  net.ipv4.icmp_echo_ignore_broadcasts: 1
+  #Bogus ICMP responses must be ignored.
+  net.ipv4.icmp_ignore_bogus_error_responses: 1
+  #Reverse Path Filtering must be enabled.
+  net.ipv4.conf.all.rp_filter: 1
+  net.ipv4.conf.default.rp_filter: 1
+  #TCP SYN Cookies must be enabled.
+  net.ipv4.tcp_syncookies: 1
+  #An ICMP ratelimit must be configured.
+  net.ipv4.icmp_ratelimit: 100
+  net.ipv4.icmp_ratemask: 88089
+  #Timestamp must be disabled.
+  net.ipv4.tcp_timestamps: 0
+  #ARP must be restricted.
+  net.ipv4.conf.all.arp_ignore: 2
+  net.ipv4.conf.all.arp_announce: 2
+  net.ipv4.conf.all.arp_notify: 0
+  net.ipv4.conf.all.arp_accept: 0
+
+# Req-16: IPv6 protocol stack must be securely configured.
+network_config_ipv6_disabled:
+  net.ipv6.conf.all.disable_ipv6: 1
+  net.ipv6.conf.default.disable_ipv6: 1
+network_config_ipv6_enabled:
+  #Enables IPv6
+  net.ipv6.conf.all.disable_ipv6: 0
+  net.ipv6.conf.default.disable_ipv6: 0
+  #IPv6 forwarding must be disabled.
+  net.ipv6.conf.all.forwarding: 0
+  net.ipv6.conf.default.forwarding: 0
+  #IPv6 redirects must not be accepted.
+  net.ipv6.conf.all.accept_redirects: 0
+  net.ipv6.conf.default.accept_redirects: 0
+  #IPv6 source routed packets must not be accepted.
+  net.ipv6.conf.all.accept_source_route: 0
+  net.ipv6.conf.default.accept_source_route: 0
+  #IPv6 router advertisements must not be accepted.
+  net.ipv6.conf.all.accept_ra: 0
+  net.ipv6.conf.default.accept_ra: 0
+  net.ipv6.conf.all.accept_ra_rtr_pref: 0
+  net.ipv6.conf.default.accept_ra_rtr_pref: 0
+  net.ipv6.conf.all.accept_ra_pinfo: 0
+  net.ipv6.conf.default.accept_ra_pinfo: 0
+  net.ipv6.conf.all.accept_ra_defrtr: 0
+  net.ipv6.conf.default.accept_ra_defrtr: 0
+  #IPv6 router solicitations messages must not be accepted.
+  net.ipv6.conf.all.router_solicitations: 0
+  net.ipv6.conf.default.router_solicitations: 0
+  net.ipv6.conf.all.dad_transmits: 0
+  net.ipv6.conf.default.dad_transmits: 0
+  #IPv6 autoconfiguration must be disabled
+  net.ipv6.conf.all.autoconf: 0
+  net.ipv6.conf.default.autoconf: 0
+
+# Req-19: User accounts must be used that allow unambiguous identification 
+#         of the user.
+set_allowed_users: "{{ allowed_users | default('[devsecops]') }}"
+
+# Req-20: System accounts must be non-login.
+system_users_whitelist:
+  - "root"
+  - "sync"
+  - "shutdown"
+  - "halt"
+
+# ------------------------------------------------------------------------
+# 02 Logging
+# ------------------------------------------------------------------------
+
+# Req-29: Log rotation for logfiles must be configured.
+log_rotate_time: "weekly"
+log_rotate_count: 4
+log_rotate_maxsize: "10M"
+log_rotate_compress: false
+
+# Req-30: System time must be synchronized against a reference time source.
+# More variables for this requirement in file /default/main.yml!
+# Enables (true) the system to act as a NTP timeserver.
+set_timezone: "{{ timezone | default('Europe/Berlin') }}"
+set_timesync_servers: "{{ timesync_servers | default(['169.254.169.123','ntp01.otc-service.com','ntp02.otc-service.com']) | list }}"
+timesync_server_enable: false
+
+# Req-31: Auditd service must be used to log security relevant events.
+auditd_file_size: 10
+auditd_rotate_action: "ROTATE"
+auditd_num_logs: 5
+
+# Req-32: System events must be logged.
+config_system_events: "{{ config_req_32  | default(true) }}"
+system_events:
+  # System reboot
+  - "-a always,exit -F arch=b64 -S execve -F path=/sbin/reboot -k reboot"
+  - "-a always,exit -F arch=b64 -S execve -F path=/sbin/poweroff -k reboot"
+  - "-a always,exit -F arch=b64 -S execve -F path=/sbin/shutdow -k reboot"
+  # Change of scheduled jobs
+  - "-w /etc/at.allow"
+  - "-w /etc/at.deny"
+  - "-w /var/spool/at/"
+  - "-w /etc/crontab"
+  - "-w /etc/anacrontab"
+  - "-w /etc/cron.allow"
+  - "-w /etc/cron.deny"
+  - "-w /etc/cron.d/"
+  - "-w /etc/cron.hourly/"
+  - "-w /etc/cron.daily"
+  - "-w /etc/cron.weekly/"
+  - "-w /etc/cron.monthly/"
+  # Change of system time
+  - "-a always,exit -F arch=b64 -S adjtimex -S settimeofday -k time-change"
+  - "-a always,exit -F arch=b64 -S clock_settime -k time-change"
+  - "-w /etc/localtime -p wa -k time-change"
+  # Connection of external device (storage)
+  - "-a always,exit -F arch=b64 -S mount -F auid>=1000 -F auid!=4294967295 -k mounts"
+  - "-a always,exit -F arch=b64 -S mount -F auid>=500 -F auid!=4294967295 -k export"
+  # Loading/unloading of kernel modules
+  - "-w /sbin/insmod -p x -k modules"
+  - "-w /sbin/rmmod -p x -k modules"
+  - "-w /sbin/modprobe -p x -k modules"
+  - "-a always,exit -F arch=b64 -S init_module -S delete_module -k modules"
+
+# Req-33: Access and Authentication events must be logged.
+config_access_events: "{{ config_req_33 | default(true) }}"
+access_events:
+  # Logon and Logoff
+  - "-w /var/log/lastlog -p wa -k logins"
+  # Password Change
+  - "-w /etc/shadow -p wa -k identity"
+  - "-w /etc/gshadow -p wa -k identity"
+  - "-w /etc/security/opasswd -p wa -k identity"
+  # Escalation of privileges
+  - "-w /etc/sudoers -p wa -k scope"
+  - "-w /etc/sudoers.d -p wa -k scope"
+  - "-w /var/log/sudo.log -p wa -k actions"
+  # Modification of discretionary access control permissions
+  - "-a always,exit -F arch=b64 -S chmod -S fchmod -S fchmodat -F auid>=1000 -F auid!=4294967295 -k perm_mod"
+  - "-a always,exit -F arch=b64 -S chown -S fchown -S fchownat -S lchown -F auid>=1000 -F auid!=4294967295 -k perm_mod"
+  - "-a always,exit -F arch=b64 -S setxattr -S lsetxattr -S fsetxattr -S removexattr -S lremovexattr -S fremovexattr -F auid>=1000 -F auid!=4294967295 -k perm_mod"
+
+# Req-34: Account and Group Management events must be logged.
+config_account_group_mgmt_events: "{{ config_req_34 | default(true) }}"
+account_group_mgmt_events:
+# Create/modify/delete users
+  - "-w /etc/passwd -p wa -k identity"
+# Create/modify/delete groups
+  - "-w /etc/group -p wa -k identity"
+
+# Req-35: Configuration Change events must be logged.
+config_change_events: "{{ config_req_35 | default(true) }}"
+change_events:
+  # Deletion of logs
+  - "-w /var/log/audit/audit.log"
+  - "-w /var/log/audit/audit[1-4].log"
+  # Change of logging configuration
+  - "-w /etc/syslog."
+  - "-w /etc/rsyslog.conf"
+  - "-w /etc/rsyslog.d/conf"
+  - "-w /etc/audit/auditd.conf -p wa"
+  - "-w /etc/audit/audit.rules -p wa"
+  # Network configuration change
+  - "-a always,exit -F arch=b64 -S sethostname -S setdomainname -k system-locale"
+  - "-w /etc/issue -p wa -k system-locale"
+  - "-w /etc/issue.net -p wa -k system-locale"
+  - "-w /etc/hosts -p wa -k system-locale"
+  - "-w /etc/network -p wa -k system-locale"
+  - "-w /etc/networks -p wa -k system-locale"
+  # Authentication Subsystem changes
+  - "-w /etc/pam.d/"
+  - "-w /etc/nsswitch.conf"
+  # Critical File changes
+  - "-w /etc/ssh/sshd_config"
+  - "-w /etc/sysctl.conf"
+  - "-w /etc/modprobe.conf"
+  - "-w /etc/profile.d/"
+  - "-w /etc/profile"
+  - "-w /etc/shells"
+
+# Req-37: Security relevant logging data must be send to an external system 
+#         direct after their creation.
+set_syslog_type: "{{ syslog_type | default('rsyslog') }}"
+
+# Req-39: If RSyslog is used, at least one central logging server must be 
+#         configured.
+set_syslog_server: "{{ syslog_server | default('0.0.0.0') }}"
+set_syslog_protocol: "{{ syslog_protocol | default('udp') }}"
+set_syslog_port: "{{ syslog_port | default('514') }}"
+
+# ------------------------------------------------------------------------
+# 03 Pluggable Authentication Modules
+# ------------------------------------------------------------------------
+
+# Req-42: If PAM is used, it needs to be reconfigured to use strong salted
+#         password hash functions while doing many calculation rounds to protect
+#         passwords.
+sha_crypt_max_rounds: 640000
+encryption_method: sha512
+
+# Req-43: If PAM is used, password rules must be configured for PAM to
+#         force the use of passwords with a minimum length of 12 characters
+#         and a combination of three out of the following categories: upper
+#         cases, lower case, numbers and special characters.
+pam_password_length: "12"
+pam_character_classes: "3"
+pam_password_maxrepeat: "3"
+
+# Req-44: If PAM is used, a protection against brute force and dictionary 
+#         attacks that hinder password guessing must be configured in PAM.
+failed_login_attemps: 5
+unlock_time: 600
+
+# Req-45: If PAM is used , PAM must be configured that motd did not contain 
+#         any sensitive data.
+files_motd:
+  - "login"
+  - "sshd"
+
+# ------------------------------------------------------------------------
+# 04 IPTables
+# ------------------------------------------------------------------------
+
+# To avoid conflicts firewalld and nftable services must disabled if 
+# iptables is used.
+enable_firewalld: false
+enable_nftables: false
+enable_iptables: true
+
+# Req-47: If iptables is used, policies for outbound and established 
+#         connections must be configured.
+iptables_protocols: [ "tcp", "udp", "icmp" ]
+
+# Req-48: If iptables is used, policies must exist for all ports in 
+#         listening state.
+set_tcp_services: "{{ tcp_services | default([22]) }}"
+set_udp_services: "{{ udp_services | default([]) }}"
+
+# ------------------------------------------------------------------------
+# 05 Mandatory Access Control
+# ------------------------------------------------------------------------
+
+# Req-52: If SELinux is used, its state must be enforced.
+selinux_state: enforcing
+
+# Req-53: If SELinux is used, the policy must be configured.
+  
+selinux_policy: targeted  # Req-53
+
+# Req-54: If SELinux is used, SETroubleshoot and MCS Translation Service 
+#         must not be installed.
+selinux_tools:
+  - "setroubleshoot"
+  - "mcstrans"
+
+# Req-56: AppArmor is used, its state must be enforced.
+enforce_apparmor_files:
+  - "sbin"
+  - "bin"
+  - "usr"

@@ -1,6 +1,6 @@
 ---
 # tel-it-security-automation :- Ansible roles for automated security hardening.  
-# Copyright (c) 2019 Markus Schumburg, [...] Deutsche Telekom AG 
+# Copyright (c) 2020 Maximilian Hertstein [...] Deutsche Telekom AG 
 # contact: devsecops@telekom.de 
 # This file is distributed under the conditions of the Apache-2.0 license. 
 # For details see the files LICENSING, LICENSE, and/or COPYING on the toplevel.
@@ -14,29 +14,6 @@
 # Main Tasks
 # ========================================================================
 
-# Stop playbook if Linux distro and version is not supported.
-- fail:
-    msg: "Your {{ansible_distribution}} version {{ ansible_distribution_version }} is not supported!"
-  when: (ansible_distribution == "RedHat" and ansible_distribution_major_version != "7") and
-        (ansible_distribution == "RedHat" and ansible_distribution_major_version != "8") and
-        (ansible_distribution == "CentOS" and ansible_distribution_major_version != "7") and
-        (ansible_distribution == "Amazon" and aansible_distribution_major_version != "2") and
-        (ansible_distribution == "Suse" and ansible_distribution_major_version != "12") and
-        (ansible_distribution == "Suse" and ansible_distribution_major_version != "15") and
-        (ansible_distribution == "Ubuntu" and ansible_distribution_version != "16.04") and
-        (ansible_distribution == "Ubuntu" and ansible_distribution_version != "18.04")
-
-# Generates a user with root rights and ssh access with public-key.
-- name: configure a default user with root rights
-  user:
-    name: "{{ user_name }}"
-    shell: /bin/bash
-    password: "{{ password|password_hash('sha512') }}"
-    createhome: yes
-    groups: "{{ group_ssh }},{{ group_sudo }}"
-    append: yes
-  when: config_new_user
-
 # Read variables for detected OS from '/vars/var_<linux-os>.yml' files
 - name: read variables for redhat 7
   include_vars: "vars_os_redhat_7.yml"
@@ -49,6 +26,10 @@
 - name: read variables for centos 7
   include_vars: "vars_os_centos_7.yml"
   when: ansible_distribution == "CentOS" and ansible_distribution_major_version == "7"
+
+- name: read variables for centos 8
+  include_vars: "vars_os_centos_8.yml"
+  when: ansible_distribution == "CentOS" and ansible_distribution_major_version == "8"
 
 - name: read variables for amazon linux
   include_vars: "vars_os_amazon_2.yml"
@@ -70,6 +51,38 @@
   include_vars: "vars_os_ubuntu-18.yml"
   when: ansible_distribution == "Ubuntu" and ansible_distribution_version == "18.04"
 
-- include_vars: vars_ssh(01)ssh-requirements.yml
+- name: read variables for ubuntu 20.04
+  include_vars: "vars_os_ubuntu-20.yml"
+  when: ansible_distribution == "Ubuntu" and ansible_distribution_version == "20.04"
+
+- name: load default or user settings for requirements
+  include_vars: '{{ item }}'
+  with_first_found:
+    - files:
+      - 'vars_user_config.yml'
+      - 'vars_user_ssh.yml'
+      - 'vars_custom_config.yml'
+      - 'vars_custom_ssh.yml'
+      skip: true
+
+# Set variable is ipv6 is enabled and also active
+ 
+- name: set variable if ipv6 is enabled
+  set_fact:
+    enable_ipv6_protocol: "{{ config_ipv6_enable if ansible_all_ipv6_addresses is defined else 'false' }}"
+
+# Generates a user with root rights and ssh access with public-key.
+- name: configure a default user with root rights
+  user:
+    name: "{{ user_name }}"
+    shell: /bin/bash
+    password: "{{ password|password_hash('sha512') }}"
+    createhome: yes
+    groups: "{{ os_group_ssh }},{{ group_sudo }}"
+    append: yes
+  when: 
+    - config_new_user
+    - user_name | length > 0
+    - public_key_file | length > 0
 
 - import_tasks: ssh(01)all.yml

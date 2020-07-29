@@ -1,6 +1,6 @@
 ---
 # tel-it-security-automation :- Ansible roles for automated security hardening.  
-# Copyright (c) 2019 Markus Schumburg, [...] Deutsche Telekom AG 
+# Copyright (c) 2020 Maximilian Hertstein [...] Deutsche Telekom AG 
 # contact: devsecops@telekom.de 
 # This file is distributed under the conditions of the Apache-2.0 license. 
 # For details see the files LICENSING, LICENSE, and/or COPYING on the toplevel.
@@ -27,7 +27,6 @@
   listen: restart chrony
   when: 
     - not ansible_check_mode
-    - ansible_os_family != "Suse" 
     - ansible_distribution_major_version != "12"
 
 - name: restart chrony (SLES 12)
@@ -47,7 +46,6 @@
   listen: restart auditd
   when: 
     - not ansible_check_mode
-    - ansible_os_family != "Suse" 
     - ansible_distribution_major_version != "12"
     
 - name: restart auditd (SLES 12)
@@ -69,8 +67,9 @@
 
 - name: restart sshd
   service:
-    name: "sshd"
+    name: '{{ os_sshd_service_name }}'
     state: restarted
     enabled: yes
   when: not ansible_check_mode
+
 

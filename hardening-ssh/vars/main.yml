@@ -1,6 +1,6 @@
 ---
 # tel-it-security-automation :- Ansible roles for automated security hardening.  
-# Copyright (c) 2019 Markus Schumburg, [...] Deutsche Telekom AG 
+# Copyright (c) 2020 Maximilian Hertstein [...] Deutsche Telekom AG 
 # contact: devsecops@telekom.de 
 # This file is distributed under the conditions of the Apache-2.0 license. 
 # For details see the files LICENSING, LICENSE, and/or COPYING on the toplevel.
@@ -9,7 +9,148 @@
 # Deutsch Telekom IT - DevSecOps Team
 # ------------------------------------------------------------------------
 # Security Hardening & Compliance Checks
-# Secure Shell (3.04)
+# Linux OS for Servers (3.65)
 #
-# Vars
+# Main Variables
 # ========================================================================
+
+# Req-1: The SSH protocol version 2 must be used.
+# Obsolet with OpenSSH version 7.4 or later
+config_ssh_protocol: "{{ config_req_01 | default(true) }}"
+ssh_version: 2
+
+# Req-2: SSH moduli smaller than 2048 must not be used.
+config_moduli: "{{ config_req_02 | default(true) }}"
+moduli_minimum: 2048
+
+# Req-3: Only approved key exchange algorithms must be used.
+config_key_exchange: "{{ config_req_03 | default(true) }}"
+ssh_key_ex:
+  - curve25519-sha256@libssh.org
+  - diffie-hellman-group-exchange-sha256
+  - ecdh-sha2-nistp521
+  - ecdh-sha2-nistp384
+  - ecdh-sha2-nistp256
+
+# Req-4: Only approved ciphers algorithms must be used.
+config_chiphers: "{{ config_req_04 | default(true) }}"
+ssh_ciphers:
+  - chacha20-poly1305@openssh.com
+  - aes256-gcm@openssh.com
+  - aes128-gcm@openssh.com
+  - aes256-ctr
+  - aes192-ctr
+  - aes128-ctr
+
+# Req-5: Only approved MAC algorithms must be used.
+config_macs: "{{ config_req_05 | default(true) }}"
+ssh_macs:
+  - hmac-sha2-512-etm@openssh.com
+  - hmac-sha2-256-etm@openssh.com
+  - hmac-sha2-512
+  - hmac-sha2-256
+
+# Req 6: Only approved Host Key Algorithms (a.k.a. public key signature algorithms 
+#        or server authentication algorithms) must be used.
+config_hostkey_algorithm: "{{ config_req_06 | default(true) }}"
+ssh_hostkey_algorithm:
+  - ecdsa-sha2-nistp256-cert-v01@openssh.com
+  - ecdsa-sha2-nistp384-cert-v01@openssh.com
+  - ecdsa-sha2-nistp521-cert-v01@openssh.com
+  - ecdsa-sha2-nistp256
+  - ecdsa-sha2-nistp384
+  - ecdsa-sha2-nistp521
+
+# Req-7: SSH logging must be enabled.
+config_logging: "{{ config_req_07 | default(true) }}"
+ssh_syslogfacility: "AUTH"
+ssh_loglevel: "{{ loglevel | default('INFO') }}"
+
+# Req-8: SSH LoginGraceTime must be set to one minute or less.
+config_login_grace_time: "{{ config_req_08 | default(true) }}"
+login_grace_time: 60
+
+# Req-9: SSH MaxAuthTries must be set to 5 or less.
+config_max_auth_tries: "{{ config_req_09 | default(true) }}"
+max_auth_tries: 5
+max_sessions: 20
+max_startups: "10:30:100"
+
+# Req-10: SSH root login must be disabled.
+config_permit_root: "{{ config_req_10 | default(true) }}"
+allow_root_login: false
+
+# Req-11: SSH strict mode must be enabled.
+config_strict_mode: "{{ config_req_11 | default(true) }}"
+strict_mode: true
+
+# Req-12: SSH user authentication must be done with public keys.
+config_pubkey_auth: "{{ config_req_12 | default(true) }}"
+pubkey_auth: true
+
+# Req-13: SSH password authentication must be disabled.
+config_pass_auth: "{{ config_req_13 | default(true) }}"
+password_auth: false
+challenge_response: false
+
+# Req-14: SSH IgnoreRhosts must be enabled.
+config_ignore_rhost: "{{ config_req_14 | default(true) }}"
+ignore_rhosts: true
+
+# Req-15: SSH HostbasedAuthentication must be disabled.
+config_host_based_auth: "{{ config_req_15 | default(true) }}"
+host_based_auth: false
+ignore_known_hosts: true
+
+# Req-16: The usage of the SSH service must be restricted to dedicated groups or users.
+config_user_groups: "{{ config_req_16 | default(true) }}"
+ssh_deny_users: "{{ deny_users | default('') }}"
+ssh_allow_users: "{{ allow_users | default('') }}"
+ssh_deny_groups: "{{ deny_groups | default('') }}"
+ssh_allow_groups: "{{ allow_groups | default('') }}"
+
+# Req-17: The SSH Idle Timeout Interval must be configured to an adequate time.
+config_idle_timeout: "{{ config_req_17 | default(true) }}"
+tcp_keepalive: false
+ssh_client_alive_interval: "{{ client_alive_interval | default('600') }}"
+ssh_client_alive_count: "{{ client_alive_count | default('3') }}"
+
+# Req-18: SSH tunnel devices must be disabled.
+config_permit_tunnel: "{{ config_req_18 | default(true) }}"
+permit_tunnel: false
+
+# Req-19: SSH TCP port forwarding must be disabled.
+config_tcp_forwarding: "{{ config_req_19 | default(true) }}"
+allow_tcp_forwarding: false
+
+# Req-20: SSH agent forwarding must be disabled.
+config_agent_forwarding: "{{ config_req_20 | default(true) }}"
+allow_agent_forwarding: false
+
+# Req-21: SSH gateway ports must be disabled.
+config_gw_ports: "{{ config_req_21 | default(true) }}"
+gw_ports: false
+
+# Req-22: SSH X11 forwarding must be disabled.
+config_x11_forwarding: "{{ config_req_22 | default(true) }}"
+x11_forwarding: false
+
+# Req-23: SSH PermitUserEnvironment must be disabled.
+config_permit_user_env: "{{ config_req_23 | default(true) }}"
+permit_user_env: false
+
+# Req-24: SSH PermitEmptyPasswords must be disabled.
+config_empty_pass: "{{ config_req_24 | default(true) }}"
+permit_empty_pw: false
+
+# Req-25: If SFTP is activated, internal server of OpenSSH must be used.
+config_sftp: "{{ config_req_25 | default(true) }}"
+set_sftp_chroot: true
+sftp_logging: "{{ ssh_loglevel }}"
+sftp_group: 'sftpusr'
+sftp_chroot_dir: /home/%u
+sftp_tcp_forwarding: false
+sftp_agent_forwarding: false
+sftp_password_auth: false
+sftp_root_login: false
+sftp_x11_forwardning: false

@@ -11,7 +11,7 @@
 # Security Hardening & Compliance Checks
 # Linux OS for Servers (3.65)
 #
-# Vars for RedHat Enterprise Linux 7.x
+# Vars for CentOS Linux 8.x
 # ========================================================================
 
 # =IMPORTANT==============================================================
@@ -21,8 +21,11 @@
 # ========================================================================
 
 # Req-1: Unused services and protocols must be deactivated.
-os_network_services: ""
-
+os_network_services: 
+  - "rpcbind"
+  - "rpcbind.socket"
+  - "systemd-resolved.service"
+  
 # Req 3: Unused software must not be installed or must be uninstalled.
 os_servers:
   - "avahi"
@@ -32,7 +35,7 @@ os_servers:
   - "rsh-server"
   - "yp-tools"
   - "ntp"
-  
+
 os_clients:
   - "rsh"
   - "ypbind"
@@ -41,7 +44,7 @@ os_clients:
 # Req-4: Dedicated partitions must be used for growing content that can 
 #        influence the availability of the system.
 os_filesystem_type: "xfs"
-os_restorecon_command: true
+os_restorecon_command: true  
 
 # Req-13: Core dumps must be disabled.
 os_disable_apport: false
@@ -104,7 +107,7 @@ os_specific_change_events:
 
 # Req-37: Security relevant logging data must be send to an external system 
 #         direct after their creation.
-os_rsyslog_template: "rsyslog_RHEL7.j2"
+os_rsyslog_template: "rsyslog_RHEL8.j2"
 os_rsyslog_conf: "/etc/rsyslog.conf"
 
 # PAM parameters needed for Req-42 - 45
@@ -119,7 +122,7 @@ os_pam_hashing_files: "{{ os_pam_config_files }}"
 os_pam_hashing_type: "password"
 os_pam_hashing_control: "sufficient"
 os_pam_hashing_module: "pam_unix.so"
-os_pam_hashing_module_arg: 
+os_pam_hashing_module_arg:
   - "{{ encryption_method }}"
   - "rounds={{ sha_crypt_max_rounds }}"
 
@@ -137,16 +140,16 @@ os_pam_complexity_control: ""
 os_pam_complexity_module: ""
 os_pam_complexity_module_arg: ""
 
+# Req-45: If PAM is used , PAM must be configured that motd did not contain 
+#         any sensitive data.
+os_sshd_service_name: sshd
+
 # Req-44: If PAM is used, a protection against brute force and dictionary 
 #         attacks that hinder password guessing must be configured in PAM.
 os_pam_fail_login_files: "{{ os_pam_config_files }}"
 os_pam_fail_login_type: "auth"
 os_pam_fail_login_control: "required"
 os_pam_fail_login_module: "pam_faillock.so"
-
-# Req-45: If PAM is used , PAM must be configured that motd did not contain 
-#         any sensitive data.
-os_sshd_service_name: sshd
 
 # Req-46 - 49: IPTables
 os_iptables_tools: "iptables-services"
@@ -161,7 +164,6 @@ os_ip6tables_rules: ""
 os_mac_solution: "selinux"
 os_install_mac_tools: 
   - "libselinux"
-  - "libselinux-python"
 
 # Req-66: Permissions of security relevant configuration files must have 
 #         the distribution default values or more restrictive.

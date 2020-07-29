@@ -1,0 +1,155 @@
+---
+# tel-it-security-automation :- Ansible roles for automated security hardening.  
+# Copyright (c) 2020 Maximilian Hertstein [...] Deutsche Telekom AG 
+# contact: devsecops@telekom.de 
+# This file is distributed under the conditions of the Apache-2.0 license. 
+# For details see the files LICENSING, LICENSE, and/or COPYING on the toplevel.
+
+# ========================================================================
+# Deutsch Telekom IT - DevSecOps Team
+# ------------------------------------------------------------------------
+# Security Hardening & Compliance Checks
+# SSH (3.04)
+#
+# Variables for User Config
+# ========================================================================
+
+# -- IMPORTANT ------------------------------------------------------------
+#
+# The playbook disables all SSH access without public-key. A user with
+# public key must and root privileges must exist on the system.
+#
+#       Otherwise, remote login with SSH is not longer possible!
+#
+# ------------------------------------------------------------------------
+
+# TCP Port(s) to use with SSH. 
+ssh_server_ports:
+  - 22
+  # -  you can define more if needed.
+
+# Enable if IPv6 should be used:
+ipv6_enable: false
+
+# Enable (true) if a dedicated IPv4 management interface is used.
+mgmt_interface_ipv4: false
+# Define IPv4 address for mgmt interface if needed (default all).
+ipv4_mgmt_interface: "0.0.0.0"
+# Enable if (true) a dedicated IPv6 management interface is used.
+mgmt_interface_ipv6: false
+# Define IPv6 address for mgmt interface if needed (default all).
+ipv6_mgmt_interface: "::"
+
+# Set the following parameters to generate a user with root privileges, public
+# key authentication and permission to login via SSH.
+new_ssh_user: false
+# Set user name.
+ssh_user_name: ""
+# Set path to public-key file (e.g. id_rsa.pub).
+# Place file in folder 'files' or configure own path to your private key.
+ssh_public_key: "{{ role_path }}/files/id_rsa.pub"
+# Change if other group is used for sudo.
+ssh_groups: "sudo"
+
+# -- NOTE ----------------------------------------------------------------
+#
+# The following variables can be used to define your own hardening setup.
+# Set a variable 'config-req-xx' to 'false' if you want to skip it during
+# hardening if it is not applicable for your setup.
+#
+# You must document the reason why it is N/A from your point of view in
+# Statement of Compliance (SoC) list for Privacy & Security Assessment!
+#
+# ------------------------------------------------------------------------
+
+# Req-1: The SSH protocol version 2 must be used.
+config_req_01: true
+
+# Req-2: SSH moduli smaller than 2048 must not be used.
+config_req_02: true
+
+# Req-3: Only approved key exchange algorithms must be used.
+config_req_03: true
+
+# Req-4: Only approved ciphers algorithms must be used.
+config_req_04: true
+
+# Req-5: Only approved MAC algorithms must be used.
+config_req_05: true
+
+# Req 6: Only approved Host Key Algorithms (a.k.a. public key signature algorithms 
+#        or server authentication algorithms) must be used.
+config_req_06: true
+
+# Req-7: SSH logging must be enabled.
+config_req_07: true
+
+# Set SSH loglevel for logging events (default "INFO")
+loglevel: "INFO"
+
+# Req-8: SSH LoginGraceTime must be set to one minute or less.
+config_req_08: true
+
+# Req-9: SSH MaxAuthTries must be set to 5 or less.
+config_req_09: true
+
+# Req-10: SSH root login must be disabled.
+config_req_10: true
+
+# Req-11: SSH strict mode must be enabled.
+config_req_11: true
+
+# Req-12: SSH user authentication must be done with public keys.
+config_req_12: true
+
+# Req-13: SSH password authentication must be disabled.
+config_req_13: true
+
+# Req-14: SSH IgnoreRhosts must be enabled.
+config_req_14: true
+
+# Req-15: SSH HostbasedAuthentication must be disabled.
+config_req_15: true
+
+# Req-16: The usage of the SSH service must be restricted to dedicated groups or users.
+config_req_16: true
+
+# Define user/groups that should denied or allowed for SSH use
+deny_users: ''
+allow_users: ''
+deny_groups: ''
+# Group 'ssh' is configured automatically. Must not be set here!
+allow_groups: ''
+
+# Req-17: The SSH Idle Timeout Interval must be configured to an adequate time.
+config_req_17: true
+
+# Set timeout interval for SSH connection 
+#    client_alive_interval (seconds) x client_alive_count; 
+#    Example: 60 (sec) x 10 (alives) = 10 min timeout
+client_alive_interval: 60
+client_alive_count: 10
+
+# Req-18: SSH tunnel devices must be disabled.
+config_req_18: true
+
+# Req-19: SSH TCP port forwarding must be disabled.
+config_req_19: true
+
+# Req-20: SSH agent forwarding must be disabled.
+config_req_20: true
+
+# Req-21: SSH gateway ports must be disabled.
+config_req_21: true
+
+# Req-22: SSH X11 forwarding must be disabled.
+config_req_22: true
+
+# Req-23: SSH PermitUserEnvironment must be disabled.
+config_req_23: true
+
+# Req-24: SSH PermitEmptyPasswords must be disabled.
+config_req_24: true
+
+# Req-25: If SFTP is activated, internal server of OpenSSH must be used.
+config_req_25: true

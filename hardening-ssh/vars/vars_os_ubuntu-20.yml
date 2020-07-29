@@ -11,7 +11,7 @@
 # Security Hardening & Compliance Checks
 # Secure Shell (3.04)
 #
-# Vars for Ubuntu 16.04 (LTS)
+# Vars for Ubuntu 20.04 (LTS)
 # ========================================================================
 
 # =IMPORTANT==============================================================
@@ -21,7 +21,7 @@
 # ========================================================================
 
 # Obsolet with OpenSSH version 7.4 or later (only used with Ubuntu 16.04)
-os_config_ssh_version: true
+os_config_ssh_version: false
 
 # Do not change group sshd! Add only additional groups if  needed. 
 # Otherwise, you can't login afterwards!

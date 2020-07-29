@@ -1,6 +1,6 @@
 ---
 # tel-it-security-automation :- Ansible roles for automated security hardening.  
-# Copyright (c) 2019 Markus Schumburg, [...] Deutsche Telekom AG 
+# Copyright (c) 2020 Maximilian Hertstein [...] Deutsche Telekom AG 
 # contact: devsecops@telekom.de 
 # This file is distributed under the conditions of the Apache-2.0 license. 
 # For details see the files LICENSING, LICENSE, and/or COPYING on the toplevel.
@@ -23,10 +23,6 @@
 # Req-1: Unused services and protocols must be deactivated.
 os_network_services: 
   - "systemd-resolved.service"
-  
-# Req 2: The reachability of services must be restricted.
-os_iptables_tools: 
-  - "iptables-services"
 
 # Req 3: Unused software must not be installed or must be uninstalled.
 os_servers:
@@ -43,9 +39,6 @@ os_clients:
   - "ypbind"
   - "nftables"
 
-# Snapd is only available on Ubuntu 16.04/18.04
-os_uninstall_snap: false
-
 # Req-4: Dedicated partitions must be used for growing content that can 
 #        influence the availability of the system.
 os_filesystem_type: "xfs"
@@ -53,6 +46,11 @@ os_restorecon_command: true
 
 # Req-13: Core dumps must be disabled.
 os_disable_apport: false
+
+# Req-18: GPG check for repository server must be activated and corresponding
+#         keys for trustable repositories must be configured.
+os_packet_manager_conf: "/etc/yum.conf"
+os_repo_files_dir: "/etc/yum.repos.d"
 
 # Req-19: User accounts must be used that allow unambiguous identification 
 #         of the user.
@@ -64,7 +62,7 @@ os_nologin_path: /sbin/nologin
 # Is only neeed for Ubuntu 16.04/18.04 (-> true).
 os_config_root_password: false
 
-# Req-28: Logging must be enabled in bootloader configuration.
+# Req-28: Auditing must be enabled at boot by setting a kernel parameter.
 os_grub_config_file: "/boot/grub2/grub.cfg"
 os_grub_config_update: "grub2-mkconfig -o /boot/grub2/grub.cfg"
 
@@ -115,8 +113,9 @@ os_pam_config_files:
   - "/etc/pam.d/system-auth"
   - "/etc/pam.d/password-auth"
 
-# Req-42: If PAM is used, an appropriate hashing function must be configured 
-#         for password protection for PAM.
+# Req-42: If PAM is used, it needs to be reconfigured to use strong salted
+#         password hash functions while doing many calculation rounds to protect
+#         passwords.
 os_pam_hashing_files: "{{ os_pam_config_files }}"
 os_pam_hashing_type: "password"
 os_pam_hashing_control: "sufficient"
@@ -125,10 +124,10 @@ os_pam_hashing_module_arg:
   - "{{ encryption_method }}"
   - "rounds={{ sha_crypt_max_rounds }}"
 
-# Req-43: If PAM is used, password rules must be configured for PAM to force 
-#         the use of passwords with a minimum length of 8 characters and a 
-#         combination of three out of the following categories: upper cases, 
-#         lower case, numbers and special characters.
+# Req-43: If PAM is used, password rules must be configured for PAM to
+#         force the use of passwords with a minimum length of 12 characters
+#         and a combination of three out of the following categories: upper
+#         cases, lower case, numbers and special characters.
 os_pam_password_length: "{{ pam_password_length }}"
 os_install_pam_pwmodules: false
 os_pam_pwmodules: ""
@@ -139,6 +138,10 @@ os_pam_complexity_control: ""
 os_pam_complexity_module: ""
 os_pam_complexity_module_arg: ""
 
+# Req-45: If PAM is used , PAM must be configured that motd did not contain 
+#         any sensitive data.
+os_sshd_service_name: sshd
+
 # Req-44: If PAM is used, a protection against brute force and dictionary 
 #         attacks that hinder password guessing must be configured in PAM.
 os_pam_fail_login_files: "{{ os_pam_config_files }}"
@@ -146,13 +149,16 @@ os_pam_fail_login_type: "auth"
 os_pam_fail_login_control: "required"
 os_pam_fail_login_module: "pam_faillock.so"
 
-# For Req-46 - 49: IPTables
-os_iptables_persistant: ""
-os_iptables_save_stop: "yes"
-os_iptables_save_reload: "yes"
+# Req-46 - 49: IPTables
+os_iptables_tools: "iptables-services"
+os_iptables_service: "iptables.service"
+os_ip6tables_service: "ip6tables.service"
+os_iptables_rules: ""
+os_ip6tables_rules: ""
 
-# Req-50: If a system has Internet facing services or is a virtualization 
-#         host, a MAC solution must be used.
+# Req-50: If a system has Internet facing services or is a virtualization
+#         host, a MAC solution must be used to restrict these services
+#         respectively guest VMs.
 os_mac_solution: "selinux"
 os_install_mac_tools: 
   - "libselinux"
@@ -224,8 +230,3 @@ os_sysctl_owner: "root"
 os_sysctl_group: "root"
 os_sysctl_mode: "0644"
 
-# File: /etc/ssh/sshd_config
-os_sshd_conf_file: "/etc/ssh/sshd_config"
-os_sshd_conf_owner: "root"
-os_sshd_conf_group: "root"
-os_sshd_conf_mode: "600"
