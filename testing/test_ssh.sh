@@ -1057,7 +1057,7 @@ if [ "${!REQ}" == "TRUE" ] || [ ! ${!REQ} ]; then
     echo -e "   [Test 1.$(add_zero $NUM)$(((NUM++)))] Check if SFTP subsystem exists:\e[1;32m PASSED\e[0m";
     let PASS=$PASS+1;
   else
-    echo -e "   [Test 1.$(add_zero $NUM)$(((NUM++)))]] Check if SFTP subsystem exists:\e[1;31m FAILED\e[0m (not found)";
+    echo -e "   [Test 1.$(add_zero $NUM)$(((NUM++)))] Check if SFTP subsystem exists:\e[1;31m FAILED\e[0m (not found)";
     ERR_MSG="SFTP subsystem did not exist";
     ERR=1;
     let FAIL=$FAIL+1;
@@ -1096,10 +1096,10 @@ if [ "${!REQ}" == "TRUE" ] || [ ! ${!REQ} ]; then
     # Test 4/9
     NUM=1
     if [ $(grep -i "ChrootDirectory $SFTP_CHROOT_DIR$" $TMP_FILE | wc -l) -eq 1 ]; then
-      echo -e "   [Test 4.$(add_zero $NUM)$(((NUM++)))]] Check if ChrootDirectory is $SFTP_CHROOT_DIR:\e[1;32m PASSED\e[0m";
+      echo -e "   [Test 4.$(add_zero $NUM)$(((NUM++)))] Check if ChrootDirectory is $SFTP_CHROOT_DIR:\e[1;32m PASSED\e[0m";
       let PASS=$PASS+1;
     else
-      echo -e "   [Test 4.$(add_zero $NUM)$(((NUM++)))]] Check if ChrootDirectory is $SFTP_CHROOT_DIR:\e[1;31m FAILED\e[0m (missing)";
+      echo -e "   [Test 4.$(add_zero $NUM)$(((NUM++)))] Check if ChrootDirectory is $SFTP_CHROOT_DIR:\e[1;31m FAILED\e[0m (missing)";
       ERR_MSG="$ERR_MSG chroot directory is missing,";
       let FAIL=$FAIL+1;
       ERR=1;
@@ -1108,10 +1108,10 @@ if [ "${!REQ}" == "TRUE" ] || [ ! ${!REQ} ]; then
     # Test 5/9
     NUM=1
     if [ $(grep -i "AllowTcpForwarding $SFTP_TCP_FORWARDING$" $TMP_FILE | wc -l) -eq 1 ]; then
-      echo -e "   [Test 5.$(add_zero $NUM)$(((NUM++)))]] Check if AllowTcpForwarding is $SFTP_TCP_FORWARDING:\e[1;32m PASSED\e[0m";
+      echo -e "   [Test 5.$(add_zero $NUM)$(((NUM++)))] Check if AllowTcpForwarding is $SFTP_TCP_FORWARDING:\e[1;32m PASSED\e[0m";
       let PASS=$PASS+1;
     else
-      echo -e "   [Test 5.$(add_zero $NUM)$(((NUM++)))]] Check if AllowTcpForwarding is $SFTP_TCP_FORWARDING:\e[1;31m FAILED\e[0m (enabled)";
+      echo -e "   [Test 5.$(add_zero $NUM)$(((NUM++)))] Check if AllowTcpForwarding is $SFTP_TCP_FORWARDING:\e[1;31m FAILED\e[0m (enabled)";
       ERR_MSG="$ERR_MSG tcp forwarding is enabled,";
       let FAIL=$FAIL+1;
       ERR=1;
@@ -1120,10 +1120,10 @@ if [ "${!REQ}" == "TRUE" ] || [ ! ${!REQ} ]; then
     # Test 6/9
     NUM=1
     if [ $(grep -i "AllowAgentForwarding $SFTP_AGENT_FORWARDING$" $TMP_FILE | wc -l) -eq 1 ]; then
-      echo -e "   [Test 6.$(add_zero $NUM)$(((NUM++)))]] Check if AllowAgentForwarding is $SFTP_AGENT_FORWARDING:\e[1;32m PASSED\e[0m";
+      echo -e "   [Test 6.$(add_zero $NUM)$(((NUM++)))] Check if AllowAgentForwarding is $SFTP_AGENT_FORWARDING:\e[1;32m PASSED\e[0m";
       let PASS=$PASS+1;
     else
-      echo -e "   [Test 6.$(add_zero $NUM)$(((NUM++)))]] Check if AllowAgentForwarding is $SFTP_AGENT_FORWARDING:\e[1;31m FAILED\e[0m (enabled)";
+      echo -e "   [Test 6.$(add_zero $NUM)$(((NUM++)))] Check if AllowAgentForwarding is $SFTP_AGENT_FORWARDING:\e[1;31m FAILED\e[0m (enabled)";
       ERR_MSG="$ERR_MSG agent forwarding is enabled,";
       let FAIL=$FAIL+1;
       ERR=1;
@@ -1132,10 +1132,10 @@ if [ "${!REQ}" == "TRUE" ] || [ ! ${!REQ} ]; then
     # Test 7/9
     NUM=1
     if [ $(grep -i "PasswordAuthentication $SFTP_PASS_AUTH$" $TMP_FILE | wc -l) -eq 1 ]; then
-      echo -e "   [Test 7.$(add_zero $NUM)$(((NUM++)))]] Check if PasswordAuthentication is $SFTP_PASS_AUTH:\e[1;32m PASSED\e[0m";
+      echo -e "   [Test 7.$(add_zero $NUM)$(((NUM++)))] Check if PasswordAuthentication is $SFTP_PASS_AUTH:\e[1;32m PASSED\e[0m";
       let PASS=$PASS+1;
     else
-      echo -e "   [Test 7.$(add_zero $NUM)$(((NUM++)))]] Check if PasswordAuthentication is $SFTP_PASS_AUTH:\e[1;31m FAILED\e[0m (enabled)";
+      echo -e "   [Test 7.$(add_zero $NUM)$(((NUM++)))] Check if PasswordAuthentication is $SFTP_PASS_AUTH:\e[1;31m FAILED\e[0m (enabled)";
       ERR_MSG="$ERR_MSG password authentication is enabled,";
       let FAIL=$FAIL+1;
       ERR=1;
@@ -1144,10 +1144,10 @@ if [ "${!REQ}" == "TRUE" ] || [ ! ${!REQ} ]; then
     # Test 8/9
     NUM=1
     if [ $(grep -i "PermitRootLogin $SFTP_PERMIT_ROOT$" $TMP_FILE | wc -l) -eq 1 ]; then
-      echo -e "   [Test 8.$(add_zero $NUM)$(((NUM++)))]] Check if PermitRootLogin is $SFTP_PERMIT_ROOT:\e[1;32m PASSED\e[0m";
+      echo -e "   [Test 8.$(add_zero $NUM)$(((NUM++)))] Check if PermitRootLogin is $SFTP_PERMIT_ROOT:\e[1;32m PASSED\e[0m";
       let PASS=$PASS+1;
     else
-      echo -e "   [Test 8.$(add_zero $NUM)$(((NUM++)))]] Check if PermitRootLogin is $SFTP_PERMIT_ROOT:\e[1;31m FAILED\e[0m (enabled)";
+      echo -e "   [Test 8.$(add_zero $NUM)$(((NUM++)))] Check if PermitRootLogin is $SFTP_PERMIT_ROOT:\e[1;31m FAILED\e[0m (enabled)";
       ERR_MSG="$ERR_MSG root login is enabled,";
       let FAIL=$FAIL+1;
       ERR=1;
@@ -1156,10 +1156,10 @@ if [ "${!REQ}" == "TRUE" ] || [ ! ${!REQ} ]; then
     # Test 9/9
     NUM=1
     if [ $(grep -i "X11Forwarding $SFTP_X11_FORWARDING$" $TMP_FILE | wc -l) -eq 1 ]; then
-      echo -e "   [Test 9.$(add_zero $NUM)$(((NUM++)))]] Check if X11Forwarding is $SFTP_X11_FORWARDING:\e[1;32m PASSED\e[0m";
+      echo -e "   [Test 9.$(add_zero $NUM)$(((NUM++)))] Check if X11Forwarding is $SFTP_X11_FORWARDING:\e[1;32m PASSED\e[0m";
       let PASS=$PASS+1;
     else
-      echo -e "   [Test 9.$(add_zero $NUM)$(((NUM++)))]] Check if X11Forwarding is $SFTP_X11_FORWARDING:\e[1;31m FAILED\e[0m (enabled)";
+      echo -e "   [Test 9.$(add_zero $NUM)$(((NUM++)))] Check if X11Forwarding is $SFTP_X11_FORWARDING:\e[1;31m FAILED\e[0m (enabled)";
       ERR_MSG="$ERR_MSG X11 forwarding is enabled";
       let FAIL=$FAIL+1;
       ERR=1;
