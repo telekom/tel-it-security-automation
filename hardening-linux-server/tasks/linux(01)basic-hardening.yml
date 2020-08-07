@@ -633,7 +633,7 @@
     - os_config_root_password
 
 - name: req-024.2 generate a secret root password
-  shell: date +%s | sha256sum | base64 | head -c 20
+  shell: cat /dev/urandom | tr -dc '[:graph:]' | head -c20
   register: root_password
   changed_when: false
   when: 
