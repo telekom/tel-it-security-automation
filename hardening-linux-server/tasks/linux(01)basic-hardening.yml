@@ -624,7 +624,7 @@
 # Req-24: Authentication must be used for single user mode.
 
 - name: req-024.1 check if password for root user is set
-  shell: awk -F":" '($1 == "root" && $2 == "[!*]") {print $1}' /etc/shadow
+  shell: awk -F":" '($1 == "root" && $2 ~ "[!*]") {print $1}' /etc/shadow
   register: check_root_pw
   changed_when: check_root_pw.stdout != ""
   check_mode: no
