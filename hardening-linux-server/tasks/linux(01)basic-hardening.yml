@@ -624,17 +624,18 @@
 # Req-24: Authentication must be used for single user mode.
 
 - name: req-024.1 check if password for root user is set
-  shell: awk -F":" '($1 == "root" && $2 ~ "[!*]") {print $1}' /etc/shadow
+  shell: |
+    CD="awk -F \":\" '(\$1 == \"root\" && \$2 ~ \"!*\") {print \$1 \$2}' /etc/shadow"
+    eval $CD
   register: check_root_pw
   changed_when: check_root_pw.stdout != ""
-  check_mode: no
-  when: 
-    - config_req_24 | default(true)
-    - os_config_root_password
+  check_mode: false
+    - check_root_pw.stdout != ""
 
-- name: req-024.2 generate a secret root password
-  shell: cat /dev/urandom | tr -dc '[:graph:]' | head -c20
-  register: root_password
+- name: req-024.3 set a root password
+  user:
+    name: root
+    password: "{{ root_password.stdout | password_hash('sha512') }}"
   changed_when: false
   when: 
     - config_req_24 | default(true)
