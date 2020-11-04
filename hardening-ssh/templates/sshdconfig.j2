@@ -71,7 +71,11 @@ MaxStartups {{max_startups}}
 PubkeyAuthentication {{ 'yes' if (pubkey_auth|bool) else 'no' }}
 {% endif %}
 
-AuthorizedKeysFile .ssh/authorized_keys
+AuthorizedKeysFile {{authkeys_file}}
+{% if config_authkeys_cmd %}
+AuthorizedKeysCommand {{authkeys_cmd}}
+AuthorizedKeysCommandUser {{authkeys_cmd_usr}}
+{% endif %}
 
 {% if config_ignore_rhost %}
 IgnoreRhosts {{ 'yes' if (ignore_rhosts|bool) else 'no' }}
