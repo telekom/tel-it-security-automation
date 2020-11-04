@@ -154,3 +154,11 @@ sftp_agent_forwarding: false
 sftp_password_auth: false
 sftp_root_login: false
 sftp_x11_forwardning: false
+
+# Optional: Use AuthorizedKeysCommand
+config_authkeys_cmd: "{{ config_auth_key_cmd | default(false) }}"
+authkeys_cmd: "{{ auth_key_cmd | default('/bin/false') }}"
+authkeys_cmd_usr: "{{ auth_key_cmd_usr | default('nobody') }}"
+
+# Optional: Different location for AUthorizedKeysFile
+authkeys_file: "{{ auth_key_file | default('.ssh/authorized_keys') }}"
