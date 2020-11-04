@@ -122,26 +122,30 @@ Edit this file to change the variables to enable/disable security requirements a
 
 Variables in file `/vars/vars_custom_ssh.yml`:
 
-| Name                | Req. | Values [*default*] | Description  |
-|---------------------|:----:|--------------------|--------------|
-| `ssh_server_ports`  | -    | [*22*]             | Change if other port should be used |
-| `ipv6_enable`       | -    | [*false*]          | Enable if IPv6 should be used |
-| `mgmt_interface_ipv4`| -   | [*false*]          | Enable (true) if a dedicated IPv4 management interface is used |
-| `ipv4_mgmt_interface`| -   | [*0.0.0.0*]        | Define IPv4 address for mgmt interface if needed |
-| `mgmt_interface_ipv6`| -   | [*false*]          | Enable if (true) a dedicated IPv6 management interface is used |
-| `ipv6_mgmt_interface`| -   | [*::*]             | Define IPv6 address for mgmt interface if needed|
-| `new_ssh_user`      | -    | [*false*]          | Enable if role should create a ssh user with root privileges.|
-| `ssh_user_name`     | -    | -                  | Set user name if `new_ssh_user` is true |
-| `ssh_public_key`    | -    | -                  | Set path/file name for public key if `new_ssh_user` is true. |
-| `ssh_groups`        | -    | [*sudo*]           | Change if other group is used for sudo if `new_ssh_user` is true |
-| `config_req_NN`     | all  | [*true*], false    | Enable/disable requirements |
-| `loglevel`          | 07   | -                  | Set loglevel for SSH logging |
-| `deny_users`        | 16   | -                  |  |
-| `allow_users`       | 16   | -                  |  |
-| `deny_groups`       | 16   | -                  |  |
-| `allow_groups`      | 16   | -                  |  |
-| `client_alive_interval`| 17   | [*60*]       | Set to configure timeout for SSH connection |
-| `client_alive_count`   | 17   | [*10*]       | Set to configure timeout for SSH connection |
+| Name                   | Req. | Values [*default*]         | Description  |
+|------------------------|:----:|----------------------------|--------------|
+| `ssh_server_ports`     | -    | [*22*]                     | Change if other port should be used |
+| `ipv6_enable`          | -    | [*false*]                  | Enable if IPv6 should be used |
+| `mgmt_interface_ipv4`  | -    | [*false*]                  | Enable (true) if a dedicated IPv4 management interface is used |
+| `ipv4_mgmt_interface`  | -    | [*0.0.0.0*]                | Define IPv4 address for mgmt interface if needed |
+| `mgmt_interface_ipv6`  | -    | [*false*]                  | Enable if (true) a dedicated IPv6 management interface is used |
+| `ipv6_mgmt_interface`  | -    | [*::*]                     | Define IPv6 address for mgmt interface if needed|
+| `new_ssh_user`         | -    | [*false*]                  | Enable if role should create a ssh user with root privileges.|
+| `ssh_user_name`        | -    | -                          | Set user name if `new_ssh_user` is true |
+| `ssh_public_key`       | -    | -                          | Set path/file name for public key if `new_ssh_user` is true. |
+| `ssh_groups`           | -    | [*sudo*]                   | Change if other group is used for sudo if `new_ssh_user` is true |
+| `ssh_config_req_NN`    | all  | [*true*], false            | Enable/disable requirements |
+| `loglevel`             | 07   | -                          | Set loglevel for SSH logging |
+| `deny_ssh_users`       | 16   | -                          |  |
+| `allow_ssh_users`      | 16   | -                          |  |
+| `deny_ssh_groups`      | 16   | -                          |  |
+| `allow_ssh_groups`     | 16   | -                          |  |
+| `client_alive_interval`| 17   | [*60*]                     | Set to configure timeout for SSH connection |
+| `client_alive_count`   | 17   | [*10*]                     | Set to configure timeout for SSH connection |
+| `authkeys_file`        | -    | [*.ssh/authorized_keys*]   | Change to set a different location of AuthorizedKeysFile  |
+| `config_authkeys_cmd`  | -    | [*false*]                  | Enable to use AuthorizedKeysCommand function  |
+| `authkeys_cmd`         | -    | [*/bin/false*]             | Change to the desired program to be used to look up the user's public keys  |
+| `authkeys_cmd_usr`     | -    | [*nobody*]                 | Change to specify the user under whose account the AuthorizedKeysCommand is run |
 
 Additional variables are located in the following files in directory `/vars`:
 
