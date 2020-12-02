@@ -1679,7 +1679,7 @@ if [ "${!REQ}" == "TRUE" ] || [ ! ${!REQ} ]; then
   # Test 1/3
   NUM=1
   for CHK in $NTP_SOFTWARE; do
-    if [ "$($PACKAGE 2>/dev/null | grep -ow $CHK | wc -l)" -eq "1" ]; then
+    if [ "$($PACKAGE 2>/dev/null | grep -ow $CHK | wc -l)" -gt "0" ]; then
       ERR_CHK=0;
       break;
     else
