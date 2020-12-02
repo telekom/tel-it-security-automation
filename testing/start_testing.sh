@@ -133,7 +133,7 @@ if [ -f /etc/os-release ]; then
    #   - Amazon Linux = amzn
    #   - RHEL = rhel
    #   - CentOS = centos
-   #   - SLES = sles
+   #   - SLES = sles, opensuse-leap
    #   - Ubuntu = ubuntu
    OS=$(awk -F\= '/^ID=/ {print $2}' /etc/os-release | tr -d '"')
    # Full Linux OS name
@@ -151,7 +151,7 @@ if [ -f /etc/os-release ]; then
        OS_MAIN_DISTRO="DEBIAN";
        PACKAGE="apt list --installed";
        ERR_CODE=0;
-     elif [ "$OS" == "sles" ]; then
+     elif [ "$OS" == "sles" ] || [ "$OS" == "opensuse-leap" ]; then
        OS_MAIN_DISTRO="SUSE";
        PACKAGE="rpm -qa";
        ERR_CODE=0;
