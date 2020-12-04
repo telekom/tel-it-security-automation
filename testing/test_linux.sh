@@ -2383,7 +2383,7 @@ if [ "${!REQ}" == "TRUE" ] || [ ! ${!REQ} ]; then
         echo -e "   [Test 2.$(add_zero $NUM2)$(((NUM2++)))] Check pam (/etc/pam.d/$CHK) allowed character classes ($PAM_CHAR_CLASSES) for passwords:\e[1;32m PASSED\e[0m";
         let PASS=$PASS+1;
       else
-        echo -e "   [Test 2.$(add_zero $NUM22)$(((NUM2++)))] Check pam (/etc/pam.d/$CHK) allowed character classes  ($PAM_CHAR_CLASSES) for passwords:\e[1;31m FAILED\e[0m (wrong value)";
+        echo -e "   [Test 2.$(add_zero $NUM2)$(((NUM2++)))] Check pam (/etc/pam.d/$CHK) allowed character classes  ($PAM_CHAR_CLASSES) for passwords:\e[1;31m FAILED\e[0m (wrong value)";
         ERR_MSG="$ERR_MSG password classes in /etc/pam.d/$CHK,";
         let FAIL=$FAIL+1;
         ERR=1;
