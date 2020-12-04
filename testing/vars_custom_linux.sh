@@ -252,38 +252,38 @@ REMARK_REQ45=""
 # Req-46: If iptables is used, policies for loopback traffic must be 
 #         configured.
 REQ46="TRUE"
-REQ46=""
+REMARK_REQ46=""
 
 # Req-47: If iptables is used, policies for outbound and established 
 #         connections must be configured.
 REQ47="TRUE"
-REQ47=""
+REMARK_REQ47=""
 
 # Req-48: If iptables is used, policies must exist for all ports in 
 #         listening state.
 REQ48="TRUE"
-REQ48=""
+REMARK_REQ48=""
 
 # Req-49: If iptables is used, the default policy for tables INPUT and FORWARD
 #         must be configured to drop all traffic.
 REQ49="TRUE"
-REQ49=""
+REMARK_REQ49=""
 
 # Req-50: If a system has Internet facing services or is a virtualization
 #         host, a MAC solution must be used to restrict these services
 #         respectively guest VMs.
 REQ50="TRUE"
-REQ50=""
+REMARK_REQ50=""
 
 
 # Req-51: If SELinux is used, it must not be disabled in bootloader
 #         configuration.
 REQ51="TRUE"
-REQ51=""
+REMARK_REQ51=""
 
 # Req-52: If SELinux is used, its state must be enforced.
 REQ52="TRUE"
-REQ52=""
+REMARK_REQ52=""
 
 # Req-53: If SELinux is used, the policy must be configured.
 REQ53="TRUE"
@@ -344,10 +344,3 @@ REMARK_REQ65=""
 #         the distribution default values or more restrictive.
 REQ66="TRUE"
 REMARK_REQ66=""
-
-
-
-
-
-
-
