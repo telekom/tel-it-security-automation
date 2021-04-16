@@ -301,6 +301,7 @@
   when: 
     - config_req_07 | default(true)
     - authorized_user_for_cron_at | length > 0
+    - not ansible_check_mode
     
 # Req-8: Sticky bit must be set on all world-writable directories.
 
