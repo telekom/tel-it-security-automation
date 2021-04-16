@@ -70,7 +70,7 @@
     owner: "{{ item }}"
     group: "{{ item }}"
     mode: o-rwx
-  with_items: "{{ user_dirs.stdout_lines | default([]) }}"
+  with_items: "{{ user_dirs.stdout_lines | difference(['lost+found']) | default([]) }}"
   when: config_req_58 | default(true)
 
 # Req-59: Default group for the root account must be GID 0.
