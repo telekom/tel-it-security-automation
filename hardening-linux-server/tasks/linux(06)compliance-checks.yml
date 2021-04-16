@@ -244,7 +244,7 @@
 #         exist.
 
 - name: req-065.1 search for unowned files
-  shell: df --local -P | awk {'if (NR!=1) print $6'} | xargs -I '{}' find '{}' -xdev -nouser
+  shell: df --local -P | awk {'if (NR!=1) print $6'} | xargs -I '{}' find '{}' -xdev -nouser | grep -v '^/var/lib/docker'
   register: find_unowned
   changed_when: false
   check_mode: no
@@ -261,7 +261,7 @@
     - find_unowned.stdout != ""
 
 - name: req-065.3 search for files without group
-  shell: df --local -P | awk {'if (NR!=1) print $6'} | xargs -I '{}' find '{}' -xdev -nogroup
+  shell: df --local -P | awk {'if (NR!=1) print $6'} | xargs -I '{}' find '{}' -xdev -nogroup | grep -v '^/var/lib/docker'
   register: find_no_group
   changed_when: false
   check_mode: no
