@@ -17,6 +17,9 @@ Company: [Deutsche Telekom IT GmbH](https://www.telekom.com)
 E-Mail: [devsecops@telekom.de](mailto:devsecops@telekom.de)
 
 -------------------------------------------------------------------------------
+## Deprecation Notice
+
+This project was deprecated and is not actively supported anymore.
 
 ## Introduction
 
